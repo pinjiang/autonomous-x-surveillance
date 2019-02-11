@@ -1,0 +1,12 @@
+{
+	"Num of Cameras"  : 4,
+	"Camera Pipelines": {
+		"left"          : " nvcamerasrc sensor-id=0 queue-size=2 intent=3 fpsRange=30,30 ! queue ! omxvp9enc bitrate=500000 ! rtpvp9pay ! application/x-rtp,media=video,encoding-name=VP9,payload=96 ",
+        "front"         : " nvcamerasrc sensor-id=3 queue-size=2 intent=3 fpsRange=30,30 ! queue ! omxvp9enc bitrate=500000 ! rtpvp9pay ! application/x-rtp,media=video,encoding-name=VP9,payload=96 ",
+        "right"         : " nvcamerasrc sensor-id=2 queue-size=2 intent=3 fpsRange=30,30 ! queue ! omxvp9enc bitrate=500000 ! rtpvp9pay ! application/x-rtp,media=video,encoding-name=VP9,payload=96 ",
+        "back"          : " nvcamerasrc sensor-id=1 queue-size=2 intent=3 fpsRange=30,30 ! queue ! omxvp9enc bitrate=500000 ! rtpvp9pay ! application/x-rtp,media=video,encoding-name=VP9,payload=96 "
+	},
+	"Url"               : "ws://10.170.201.19:8443",
+	"Id"                : "550e8400-e29b-41d4-a716-446655440000",
+	"Stun-Server"       : "10.170.201.19:3478"
+}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!--
+  vim: set sts=2 sw=2 et :
+
+
+  Demo Javascript app for negotiating and streaming a sendrecv webrtc stream
+  with a GStreamer app. Runs only in passive mode, i.e., responds to offers
+  with answers, exchanges ICE candidates, and streams.
+
+  Author: Nirbheek Chauhan <nirbheek@centricular.com>
+-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<script type="text/javascript" src="js/jquery-3.0.0.min.js"></script>
+	<script type="text/javascript" src="js/jquery.json.min.js"></script>
+    <script type="text/javascript" src="js/adapter.js"></script>
+    <script type="text/javascript" src="js/webrtc.js"></script>
+    <script type="text/javascript" src="js/getStats.js"></script>
+    <link rel="stylesheet" href="js/bulma-0.7.1/css/bulma.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+    <script>
+      window.onload = websocketServerConnect;
+    </script>
+    <style>
+      .error { color: red; }
+      #call,
+      #open,
+      #close {
+          width: 200px;
+          margin-top: 1.5rem;
+          margin-left:  auto;
+          margin-right: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="row clearfix">
+        <div class="col-md-4 column">
+			<video id="video1" autoplay>Your browser doesn't support video</video>
+	    </div>
+        <div class="col-md-4 column">
+			<video id="video2" autoplay>Your browser doesn't support video</video>
+	    </div>
+	    <div class="col-md-4 column">
+			<video id="video3" autoplay>Your browser doesn't support video</video>
+	    </div>
+    </div>
+	<div class="row clearfix">
+		<div class="col-md-3 column">
+			<p>选择切换模式</p>
+			<div>
+				<br>
+				  <input type="radio" onclick="switchVideoMode(this)" name="video-mode" id="auto-switch-mode" value="auto" checked>
+				  <label for="switchChoice1">自动切换</label>
+				</br>
+				  <input type="radio" onclick="switchVideoMode(this)" name="video-mode" id="manual-switch-mode" value="manual">
+				  <label for="switchChoice2">手动切换</label>
+				  <input type="checkbox" id="right_camera" value="Right" checked disabled> <label for="camera-right">右视</label>
+				  <input type="checkbox" id="front_camera" value="Front" checked disabled> <label for="camera-front">前视</label>
+				  <input type="checkbox" id="back_camera"  value="Back" disabled>  <label for="camera-back">后视</label>
+				  <input type="checkbox" id="left_camera"  value="Left" checked disabled> <label for="camera-left">左视</label>
+			</div>
+		</div>
+        <div class="col-md-3 column">
+            <div>Status: <span id="status">unknown</span></div>
+            <div><textarea id="text" cols=40 rows=4></textarea></div>
+            <div>Our id is <b id="peer-id">unknown</b></div>
+            <!-- <br/> -->
+        </div>
+        <!-- <div class="col-md-3 column">
+            <div>getUserMedia constraints being used:</div>
+            <div><textarea id="constraints" cols=40 rows=4></textarea></div>
+        </div> -->
+    </div>
+	<div class="row clearfix">
+		<div class="col-md-3 column">
+			<a id="call"  class="button" onclick="takeOver()">接管</a>
+			<a id="open"  class="button" onclick="openPeerStreams()">打开视频监控</a>	
+			<a id="close" class="button" onclick="closePeerStreams()">关闭视频监控</a>
+		</div>
+	</div>
+  </body>
+</html>
