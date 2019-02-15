@@ -18,7 +18,8 @@
 #include "common.h"
 #include "msg_handlers.h"
 
-#define G_APP_LOG_DOMAIN "gstreamer-webrtc-app"
+#define G_MESSAGES_PREFIXED "auto-x-survelliance"
+#define G_LOG_DOMAIN "auto-x-survelliance"
 
 static volatile gboolean g_running_flag = FALSE;
 
@@ -29,6 +30,8 @@ SoupWebsocketConnection *ws_conn = NULL;
 ApplicationCtx g_app_ctx = {APP_STATE_UNKNOWN, NULL, NULL, NULL};
 
 static const gchar *g_config_file = NULL;
+static const gchar *g_verbose = NULL;
+
 static gboolean disable_ssl = TRUE;
 static gchar *g_url;
 gchar *g_id;
@@ -37,8 +40,19 @@ gchar *g_stunserver;
 
 static GOptionEntry entries[] = {
   { "config",  0, 0, G_OPTION_ARG_STRING, &g_config_file, "Config File", NULL },
+  { "verbose", 'v', 0, G_OPTION_ARG_STRING, &g_verbose, "Be verbose", NULL },
   { NULL },
 };
+
+static void _dummy(const gchar *log_domain,
+                     GLogLevelFlags log_level,
+                     const gchar *message,
+                     gpointer user_data )
+
+{
+  /* Dummy does nothing */ 
+  return ;      
+}
 
 /*********************************************************************************************
  * Description:                                                                              *                                                 
@@ -286,7 +300,7 @@ static gboolean check_plugins (void) {
   gboolean ret;
   GstPlugin *plugin;
   GstRegistry *registry;
-  const gchar *needed[] = { "opus", "omx", "nice", "webrtc", "dtls", "srtp",
+  const gchar *needed[] = { "opus", "vpx", "nice", "webrtc", "dtls", "srtp",
       "rtpmanager", "videotestsrc", "audiotestsrc", NULL}; /* "omx", */
 
   registry = gst_registry_get ();
@@ -340,8 +354,6 @@ static gboolean read_config(const char* filename) {
   }
   object = json_node_get_object (root);
 
-  // g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, g_log_default_handler, NULL);
-
   if (!json_object_has_member (object, "Num of Cameras")) { 
     g_printerr ("ERROR: received message without 'Num of Cameras'");
     goto err;
@@ -384,7 +396,7 @@ static gboolean read_config(const char* filename) {
     ctx->index = g_malloc0(strlen((const char *)g_slist_nth_data(keys, i)));
     strcpy(ctx->index, (const char *)g_slist_nth_data(keys, i));
     gpointer key = ctx->index;
-    g_info("Read %s: %s\n", (char *)key, json_object_get_string_member(pipelines, (const char *)key) );  
+    g_info("Read %s: %s", (char *)key, json_object_get_string_member(pipelines, (const char *)key) );  
 
     ctx->pipeline_str = g_malloc(strlen(json_object_get_string_member(pipelines, (const char *)key)));
     strcpy(ctx->pipeline_str, json_object_get_string_member(pipelines, (const char *)key));
@@ -411,14 +423,25 @@ int main (int argc, char *argv[]) {
   GOptionContext *context;
   GError *error = NULL;
 
-  g_log_set_handler(G_APP_LOG_DOMAIN, G_LOG_LEVEL_INFO, g_log_default_handler, NULL);
-
   context = g_option_context_new ("- gstreamer webrtc recv demo");
   g_option_context_add_main_entries (context, entries, NULL);
   g_option_context_add_group (context, gst_init_get_option_group ());
   if (!g_option_context_parse (context, &argc, &argv, &error)) {
     g_printerr ("Error initializing: %s\n", error->message);
     return -1;
+  }
+
+  /* Set dummy for all levels */
+  g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, _dummy, NULL);
+
+  if(!g_verbose) {
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, g_log_default_handler, NULL);
+  } else if(!strncmp("vv", g_verbose, 2)) {   /* If -vv passed set to ONLY debug */
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,  g_log_default_handler, NULL);
+  } else if(!strncmp("v", g_verbose, 1)) { /* If -v passed set to ONLY info */
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, g_log_default_handler, NULL);
+  } else { /* For everything else, set to back to default*/
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, g_log_default_handler, NULL);
   }
   
   if (!g_config_file ) {
