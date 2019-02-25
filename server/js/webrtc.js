@@ -11,7 +11,8 @@
 var ws_server;
 var ws_port;
 
-var our_id  = "660e8400-e29b-41d4-a716-446655440000";  // Set this to use a specific peer id instead of a random one
+// var our_id  = "660e8400-e29b-41d4-a716-446655440000";  // Set this to use a specific peer id instead of a random one
+var our_id;
 var peer_id = "550e8400-e29b-41d4-a716-446655440000";
 // Override with your own STUN servers if you want
 var rtc_configuration = {iceServers: [{ urls: "stun:122.112.211.178:3478" }]};
@@ -52,11 +53,44 @@ var candidateCount = 0;
 var sendCandidateCount = 0;
 var have_offer = false
 
-function getOurId() {
-    return Math.floor(Math.random() * (9000 - 10) + 10).toString();
+$('.list-group-item').on('click', function() {
+    var $this = $(this);
+    var $alias = $this.data('alias');
+
+    $('.active').removeClass('active');
+    $this.toggleClass('active')
+
+    // Pass clicked link element to another function
+    myfunction($this, $alias)
+})
+
+$(document).ready(function() {
+    $('.list-group-item').on('click', function() {
+        var $this = $(this);
+        var $alias = $this.data('alias');
+
+        $('.active').removeClass('active');
+        $this.toggleClass('active')
+
+        // Pass clicked link element to another function
+        myfunction($this, $alias)
+    })
+});
+
+function myfunction($this,  $alias) {
+    // console.log($this.text());  // Will log Paris | France | etc...
+    peer_id = $this.text();
+}
+
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 var takeOver = function(msg) {
+
 	var jsonObj = {
 		"direction": "cs",
 		"seq"      : seq++,
@@ -137,7 +171,7 @@ var handleCandidate = function(peer_connection, msg) {
     });
 };
 
-function myGetStats(peer, callback) {
+/* function myGetStats(peer, callback) {
     if (!!navigator.mozGetUserMedia) {
 		console.log("navigator.mozGetUserMedia");
         peer.getStats(
@@ -167,7 +201,7 @@ function myGetStats(peer, callback) {
             callback(items);
         });
     }
-};
+}; */
 
 function resetState() {
     // This will call onServerClose()
@@ -265,18 +299,19 @@ function onServerMessage(event) {
             switch (msg.content.type) {
                 case "register_response":
                     if (msg.content.result == "success") {
-                        console.log("Register Successful");
 						// Incoming JSON signals the beginning of a call
-						createCall(peer_connections);					
+						createCall(peer_connections);
+                        setStatus("Register Successed");					
                     } else {
                         console.log("Register Failed");
+                        setError(msg.content.reason);
                     }
                     break;
 				case "call_response":
 					if (msg.content.result == "success") {
-						console.log("Call Successful");					
+                        setStatus("Remote Intervention Accepted");	
 					} else {
-						console.log("Call Failed");
+                        setError("Call Failed");
 					}
 					break;
                 case "disconnect":
@@ -306,9 +341,7 @@ function onServerMessage(event) {
 									peer_connections[msg.content.index].createAnswer().then(onLocalDescriptionWrapper(msg.content.index, peer_connections[msg.content.index])
 									).catch(setError);
 								}).catch(setError);
-                        }).catch(function(reason) {
-                            console.log("error: " + reason);
-                        });
+                        }).catch(setError);
                     break;
                 case "ice":
                     if (msg.content.candidateLine) {
@@ -366,22 +399,23 @@ function onServerError(event) {
 function getLocalStream() {
 
     var constraints;
-    var textarea = document.getElementById('constraints');
+    /* var textarea = document.getElementById('constraints');
     try {
         constraints = JSON.parse(textarea.value);
     } catch (e) {
         console.error(e);
-        setError('ERROR parsing constraints: ' + e.message + ', using default constraints');
+        // setError('ERROR parsing constraints: ' + e.message + ', using default constraints');
         constraints = default_constraints;
-    }
+    } */
+    constraints = default_constraints;
     console.log(JSON.stringify(constraints));
 
     // Add local stream
     if (navigator.mediaDevices.getUserMedia) {
         return navigator.mediaDevices.getUserMedia(constraints);
     } else {
-        errorUserMediaHandler();
-    }
+        // errorUserMediaHandler();
+    } 
 }
 
 function websocketServerConnect() {
@@ -399,7 +433,7 @@ function websocketServerConnect() {
     if (textarea.value == '')
         textarea.value = JSON.stringify(default_constraints);*/
     // Fetch the peer id to use
-    our_id = our_id || getOurId();
+    our_id = our_id || uuidv4();
     ws_port = ws_port || '8443';
     if (window.location.protocol.startsWith ("file")) {
         ws_server = ws_server || "127.0.0.1";
@@ -408,7 +442,8 @@ function websocketServerConnect() {
     } else {
         throw new Error ("Don't know how to connect to the signalling server with uri" + window.location);
     }
-    var ws_url = 'ws://' + ws_server + ':' + ws_port
+    // var ws_url = 'ws://' + ws_server + '/api/rtc/signalling'+ ':' + ws_port
+    var ws_url = 'ws://' + ws_server + ':' + '8000' + '/rtc/signalling/ws'
     setStatus("Connecting to server " + ws_url);
     ws_conn = new WebSocket(ws_url);
     /* When connected, immediately register with the server */
@@ -438,21 +473,52 @@ function websocketServerConnect() {
 	}
 }
 
-/* function getStats(peer) {
-    myGetStats(peer, function (results) {
-        for (var i = 0; i < results.length; ++i) {
-            var res = results[i];
-			if( res.type == "ssrc" ) {
-				console.log(res);
-			} 
-			console.log(res);
-        }
+function reportStats(result) {
 
-        setTimeout(function () {
-            getStats(peer);
-        }, 1000);
+    // console.log(result);
+    // result.connectionType.remote.ipAddress
+    // result.connectionType.remote.candidateType
+    // result.connectionType.transport
+    
+    // result.bandwidth.speed // bandwidth download speed (bytes per second)
+    
+    // to access native "results" array
+    /* if( result.results ) { */
+    //   console.log(JSON.stringify(result.results));
+    data = result.results;
+
+    $.ajax({
+        type: "POST",
+        url: "http://122.112.211.178:8000/api/webrtc/stats",
+        data: JSON.stringify(data),
+        contentType: "application/json; charset=utf-8",
+        crossDomain: true,
+        dataType: "json",
+        success: function (data, status, jqXHR) {
+        },
+        error: function (jqXHR, status) {
+          // error handler
+          console.log(jqXHR);
+          console.log('fail' + status.code);
+        }
     });
-} */
+    /* } */
+    result.results.forEach(function(item) {
+        // console.log(item.type);
+        if (item.type == 'ssrc' ) {
+            var packetsLost = item.packetsLost;
+            var packetsSent = item.packetsSent;
+            var audioInputLevel = item.audioInputLevel;
+            var trackId = item.googTrackId; // media stream track id
+            var isAudio = item.mediaType === 'audio'; // audio or video
+            var isSending = item.id.indexOf('_send') !== -1; // sender or receiver
+            console.log(item);
+
+            console.log('SendRecv type', item.id.split('_send').pop());
+            console.log('MediaStream track type', item.mediaType);
+        }
+    });
+}
 
 function onTrackWrapper(channel) {
 	return function onTrack(event) {
@@ -533,7 +599,12 @@ function createCall(peer_connections) {
     console.log('Creating RTCPeerConnection');
 	
 	for( i in peer_connections ) {
-		peer_connections[i] = new RTCPeerConnection(rtc_configuration);
+		peer_connections[i] = new RTCPeerConnection(rtc_configuration, {
+        optional: [
+            {rtcStatsClientId: our_id},
+            {rtcStatsPeerId:   peer_id},
+        ]
+    });
 		// send_channel = peer_connections[i].createDataChannel('label', null);
 		// send_channel.onopen = handleDataChannelOpen;
 		// send_channel.onmessage = handleDataChannelMessageReceived;
@@ -547,15 +618,16 @@ function createCall(peer_connections) {
 		    console.log('Adding local stream');
 		    peer_connections[i].addStream(stream);
 		    return stream;
-		}).catch(setError);
+		}).catch(function(reason) {console.log("error: " + reason);});
 		
 		peer_connections[i].onicecandidate = handleIceCandidateAnswerWrapper(i);
-		
+
+        // getStats(peer_connections[i], reportStats, repeatInterval);
 	}
     setStatus("Created peer connection for call, waiting for SDP");
 }
 
- function handleIceCandidateAnswerWrapper(channel) {
+function handleIceCandidateAnswerWrapper(channel) {
 	 return function handleIceCandidate(event) {
 		console.log('onicecandidate triggered ', channel);
 		var ice = "";

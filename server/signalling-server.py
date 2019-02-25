@@ -47,6 +47,15 @@ sessions_data = dict()
 
 ############### Helper functions ###############
 
+class ValidationError(Exception):
+    def __init__(self, message, errors):
+
+        # Call the base class constructor with the parameters it needs
+        super().__init__(message)
+
+        # Now for your custom code...
+        self.errors = errors
+
 async def recv_msg_ping(ws, raddr):
     '''
     Wait for a message forever, and send a regular ping to prevent bad routers
@@ -283,15 +292,19 @@ async def cs_handler(ws, msgJson):
             sendMsg = json.dumps({'direction': 'sc', 'seq' : seq, 'content': { 'type': 'register_response', 'result': 'failed', 'reason': 'unknown role' }})
             await ws.send(sendMsg)
             await ws.close(code=1002, reason='invalid classes')
-            raise Exception("Invalid classes from {!r}".format(raddr))
+            raise Exceptios("Invalid classes from {!r}".format(raddr))
 
         if register_flag == 'false':
             sendMsg = json.dumps({'direction': 'sc', 'seq' : seq, 'content': { 'type': 'register_response', 'result': 'failed', 'reason': 'not caller_id or caller_id has already registered' }})
+            print('{!r}'.format(sendMsg))
             await ws.send(sendMsg)
             await ws.close(code=1002, reason='register failed')
-            raise Exception("Register failed from {!r}".format(raddr))
+            # raise Exception("Register failed from {!r}".format(raddr))
+            # raise ValidationError("Register failed from {!r}".format(raddr))
+
         elif register_flag == 'true':
             sendMsg = json.dumps({'direction': 'sc', 'seq' : seq, 'content': { 'type': 'register_response', 'result': 'success' }})
+            print('{!r}'.format(sendMsg))
             await ws.send(sendMsg)
         # else:
             # sendMsg = json.dumps({'direction': 'sc', 'seq' : seq, 'content': { 'type': 'register_response', 'result': 'register_failed', 'reason': 'unknown role' }})
@@ -466,9 +479,10 @@ async def handler(ws, path):
         print("Failed to Decode Message in JSON format")
     except websockets.ConnectionClosed:
         print("Connection to peer {!r} closed, exiting handler".format(raddr))
-    finally:
-        print('msgJson : {!r}'.format(msgJson))
         await remove_peer(ws, msgJson)
+    #finally:
+    #    print('msgJson : {!r}'.format(msgJson))
+    #    await remove_peer(ws, msgJson)
 
 sslctx = None
 if not options.disable_ssl:

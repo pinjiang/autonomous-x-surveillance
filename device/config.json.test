@@ -7,7 +7,7 @@
         "back_camera"   : " videotestsrc ! queue ! vp9enc target-bitrate=500000 ! rtpvp9pay ! application/x-rtp,media=video,encoding-name=VP9,payload=96 "
 
 	},
-	"Url"               : "ws://122.112.211.178:8443",
+	"Url"               : "ws://122.112.211.178:8000/rtc/signalling/ws",
 	"Id"                : "550e8400-e29b-41d4-a716-446655440000",
 	"Stun-Server"       : "122.112.211.178:3478"
 }

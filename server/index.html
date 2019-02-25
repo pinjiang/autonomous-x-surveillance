@@ -16,10 +16,12 @@
 	<script type="text/javascript" src="js/jquery-3.0.0.min.js"></script>
 	<script type="text/javascript" src="js/jquery.json.min.js"></script>
     <script type="text/javascript" src="js/adapter.js"></script>
+    <script type="text/javascript" src='js/rtcstats.js'></script>
     <script type="text/javascript" src="js/webrtc.js"></script>
     <script type="text/javascript" src="js/getStats.js"></script>
     <link rel="stylesheet" href="js/bulma-0.7.1/css/bulma.min.css">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+    <!-- 新 Bootstrap4 核心 CSS 文件 -->
+    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.1.0/css/bootstrap.min.css">
     <script>
       window.onload = websocketServerConnect;
     </script>
@@ -32,6 +34,15 @@
           margin-top: 1.5rem;
           margin-left:  auto;
           margin-right: auto;
+      }
+      .btn-group {
+          width: 100%;
+      }
+      .btn-group-2 label.btn  {
+          width: 50%;
+      }
+      .btn-group-3 label.btn  {
+          width: 33.3%;
       }
     </style>
   </head>
@@ -55,19 +66,33 @@
 				<br>
 				  <input type="radio" onclick="switchVideoMode(this)" name="video-mode" id="auto-switch-mode" value="auto" checked>
 				  <label for="switchChoice1">自动切换</label>
-				</br>
+				</br> 
 				  <input type="radio" onclick="switchVideoMode(this)" name="video-mode" id="manual-switch-mode" value="manual">
 				  <label for="switchChoice2">手动切换</label>
 				  <input type="checkbox" id="right_camera" value="Right" checked disabled> <label for="camera-right">右视</label>
 				  <input type="checkbox" id="front_camera" value="Front" checked disabled> <label for="camera-front">前视</label>
 				  <input type="checkbox" id="back_camera"  value="Back" disabled>  <label for="camera-back">后视</label>
 				  <input type="checkbox" id="left_camera"  value="Left" checked disabled> <label for="camera-left">左视</label>
-			</div>
+            </div>
+            <div class="btn-group btn-group-3">
+                 <button id="call"  type="button" class="btn btn-default" onclick="takeOver()">接管</button>
+                 <button id="open"  type="button" class="btn btn-default" onclick="openPeerStreams()">打开视频监控</button>
+                 <button id="close" type="button" class="btn btn-default" onclick="closePeerStreams()">关闭视频监控</button>
+            </div>
 		</div>
+        <div class="col-md-4 column">
+            <div  class="pre-scrollable">
+            <ul class="list-group">
+                 <li class="list-group-item active">550e8400-e29b-41d4-a716-446655440000</li>
+                 <li class="list-group-item">550e8400-e29b-41d4-a716-446655440001</li>
+            </ul>
+            </div>
+        </div>
         <div class="col-md-3 column">
-            <div>Status: <span id="status">unknown</span></div>
+            <!-- <div>Status: <span id="status">unknown</span></div> -->
             <div><textarea id="text" cols=40 rows=4></textarea></div>
-            <div>Our id is <b id="peer-id">unknown</b></div>
+            <!-- <div><textarea id="constraints" cols=40 rows=4></textarea></div> -->
+            <!-- <div>Our id is <b id="peer-id">unknown</b></div> -->
             <!-- <br/> -->
         </div>
         <!-- <div class="col-md-3 column">
@@ -76,10 +101,8 @@
         </div> -->
     </div>
 	<div class="row clearfix">
-		<div class="col-md-3 column">
-			<a id="call"  class="button" onclick="takeOver()">接管</a>
-			<a id="open"  class="button" onclick="openPeerStreams()">打开视频监控</a>	
-			<a id="close" class="button" onclick="closePeerStreams()">关闭视频监控</a>
+        <div class="col-md-8 column">
+           <p> Id: <b id="peer-id">unknown</b> Status: <span id="status">unknown</span></p>
 		</div>
 	</div>
   </body>
