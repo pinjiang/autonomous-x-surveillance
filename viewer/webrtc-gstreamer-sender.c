@@ -24,6 +24,9 @@
 static volatile gboolean g_running_flag = FALSE;
 
 GMainLoop *loop;
+// GHashTable* g_ctx_tbl;
+SoupWebsocketConnection *ws_conn = NULL;
+
 ApplicationCtx g_app_ctx = {APP_STATE_UNKNOWN, NULL, NULL, NULL};
 
 static const gchar *g_config_file = NULL;
@@ -31,12 +34,9 @@ static const gchar *g_verbose = NULL;
 
 static gboolean disable_ssl = TRUE;
 static gchar *g_url;
-
-// gchar *g_id;
-// gchar *g_peer_id = "XXXX";
-// gchar *g_stunserver;
-// GHashTable* g_ctx_tbl;
-// SoupWebsocketConnection *ws_conn = NULL;
+gchar *g_id;
+gchar *g_peer_id = "XXXX";
+gchar *g_stunserver;
 
 static GOptionEntry entries[] = {
   { "config",  0, 0, G_OPTION_ARG_STRING, &g_config_file, "Config File", NULL },
@@ -78,11 +78,11 @@ static gboolean register_with_server () {
   gpointer key, value;
   g_hash_table_iter_init (&iter, g_app_ctx.inst_tbl);
 
-  if (soup_websocket_connection_get_state (g_app_ctx.ws_conn) !=
+  if (soup_websocket_connection_get_state (ws_conn) !=
       SOUP_WEBSOCKET_STATE_OPEN)
     return FALSE;
 
-  g_info("Registering id %s with server\n", g_app_ctx.id);
+  g_info("Registering id %s with server\n", g_id);
   while (g_hash_table_iter_next (&iter, &key, &value)) {
     // do something with key and value
     InstanceCtx* ctx = (InstanceCtx *)value;
@@ -93,18 +93,18 @@ static gboolean register_with_server () {
    * by on_server_message() */
   content = json_object_new();
   json_object_set_string_member (content, "type", "register");
-  json_object_set_string_member (content, "uid", g_app_ctx.id);
+  json_object_set_string_member (content, "uid", g_id);
   msg = json_object_new();
   json_object_set_string_member (msg, "direction", "cs");
   json_object_set_int_member (msg, "seq", 1);
-  json_object_set_string_member (msg, "from", g_app_ctx.id);
+  json_object_set_string_member (msg, "from", g_id);
   json_object_set_string_member (msg, "role", "vehicle.video");
   json_object_set_object_member (msg, "content", content);
 
   text = get_string_from_json_object (msg);
   json_object_unref (msg);
 
-  soup_websocket_connection_send_text (g_app_ctx.ws_conn, text);
+  soup_websocket_connection_send_text (ws_conn, text);
   g_free (text);
   return TRUE;
 }
@@ -181,13 +181,13 @@ static void on_server_message (SoupWebsocketConnection * conn, SoupWebsocketData
   }
   content = json_object_get_object_member (object, "content");
 
-#if 0
   if (!json_object_has_member (object, "from")) {    /* Check from field of JSON message */
     g_warning ("received message without 'from'");
     goto out;
   }
   from = json_object_get_string_member (object, "from");
 
+#if 0
   if (!json_object_has_member (object, "to")) {  /* Check from field of JSON message */
     cleanup_and_quit_loop ("ERROR: received message without 'to'", 0);
     goto out;
@@ -223,14 +223,14 @@ static void on_server_connected (SoupSession * session, GAsyncResult * res) {
   
   g_hash_table_iter_init (&iter, g_app_ctx.inst_tbl);
 
-  g_app_ctx.ws_conn = soup_session_websocket_connect_finish (session, res, &error);
+  ws_conn = soup_session_websocket_connect_finish (session, res, &error);
   if (error) {
     cleanup_and_quit_loop (&g_app_ctx, error->message, SERVER_CONNECTION_ERROR);
     g_error_free (error);
     return;
   }
 
-  g_assert_nonnull (g_app_ctx.ws_conn);
+  g_assert_nonnull (ws_conn);
 
 
   /* Update per gstreamer pipeline context */
@@ -241,8 +241,8 @@ static void on_server_connected (SoupSession * session, GAsyncResult * res) {
 
   g_info ("Connected to signalling server\n");
 
-  g_signal_connect (g_app_ctx.ws_conn, "closed",  G_CALLBACK (on_server_closed),  NULL);
-  g_signal_connect (g_app_ctx.ws_conn, "message", G_CALLBACK (on_server_message), NULL);
+  g_signal_connect (ws_conn, "closed",  G_CALLBACK (on_server_closed),  NULL);
+  g_signal_connect (ws_conn, "message", G_CALLBACK (on_server_message), NULL);
 
   /* Register with the server so it knows about us and can accept commands */
   register_with_server();
@@ -276,7 +276,7 @@ static void connect_to_websocket_server_async () {
 
   message = soup_message_new (SOUP_METHOD_GET, g_url);
 
-  g_info ("Connecting to server... %s\n", g_url);
+  g_info ("Connecting to server...\n");
 
   /* Once connected, we will register */
   soup_session_websocket_connect_async (session, message, NULL, NULL, NULL, (GAsyncReadyCallback) on_server_connected, NULL);
@@ -364,25 +364,22 @@ static gboolean read_config(const char* filename) {
     g_printerr ("ERROR: received message without 'Url'");
     goto err;
   }
-  // g_url = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Url")));
-  // strcpy(g_url, json_object_get_string_member (object, "Url"));
-  g_url = g_strdup(json_object_get_string_member (object, "Url"));
+  g_url = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Url")));
+  strcpy(g_url, json_object_get_string_member (object, "Url"));
   
   if (!json_object_has_member (object, "Id")) {         
     g_printerr ("ERROR: received message without 'Id'");
     goto err;
   }
-  // g_id = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Id")));
-  // strcpy(g_id, json_object_get_string_member (object, "Id"));
-  g_app_ctx.id = g_strdup(json_object_get_string_member (object, "Id"));
+  g_id = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Id")));
+  strcpy(g_id, json_object_get_string_member (object, "Id"));
   
   if (!json_object_has_member (object, "Stun-Server")) { 
     g_printerr ("ERROR: received message without 'Stun-Server'");
     goto err;
   } 
-  // g_stunserver = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Stun-Server")));
-  // strcpy(g_stunserver, json_object_get_string_member (object, "Stun-Server"));
-  g_app_ctx.stunserver = g_strdup(json_object_get_string_member (object, "Stun-Server"));
+  g_stunserver = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Stun-Server")));
+  strcpy(g_stunserver, json_object_get_string_member (object, "Stun-Server"));
   
   if (!json_object_has_member (object, "Camera Pipelines")) {
     g_printerr ("ERROR: received message without 'Camera Pipelines'");
@@ -395,15 +392,12 @@ static gboolean read_config(const char* filename) {
     
   for (int i = 0; i < MIN(nums, g_slist_length(keys)); i++) {
     InstanceCtx* p_ctx = g_new0(InstanceCtx, 1);
-    // p_ctx->index = g_malloc0(strlen((const char *)g_slist_nth_data(keys, i)));
-    // strcpy(p_ctx->index, (const char *)g_slist_nth_data(keys, i));
-    p_ctx->index = g_strdup(g_slist_nth_data(keys, i));
+    p_ctx->index = g_malloc0(strlen((const char *)g_slist_nth_data(keys, i)));
+    strcpy(p_ctx->index, (const char *)g_slist_nth_data(keys, i));
     gpointer key = p_ctx->index;
     g_info("Read %s: %s", (char *)key, json_object_get_string_member(pipelines, (const char *)key) );
-    // p_ctx->pipeline_str = g_malloc0(strlen(json_object_get_string_member(pipelines, (const char *)key)));
-    // strcpy(p_ctx->pipeline_str, json_object_get_string_member(pipelines, (const char *)key));
-    p_ctx->pipeline_str = g_strdup(json_object_get_string_member(pipelines, (const char *)key));
-    // p_ctx->session
+    p_ctx->pipeline_str = g_malloc0(strlen(json_object_get_string_member(pipelines, (const char *)key)));
+    strcpy(p_ctx->pipeline_str, json_object_get_string_member(pipelines, (const char *)key));
     g_hash_table_insert(g_app_ctx.inst_tbl, key, p_ctx); 
   } 
   
