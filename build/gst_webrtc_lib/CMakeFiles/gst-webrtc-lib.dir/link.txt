@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgst-webrtc-lib.a  CMakeFiles/gst-webrtc-lib.dir/gst_webrtc.c.o CMakeFiles/gst-webrtc-lib.dir/msg_handlers.c.o CMakeFiles/gst-webrtc-lib.dir/common.c.o CMakeFiles/gst-webrtc-lib.dir/__/utils/utils.c.o
+/usr/bin/ranlib libgst-webrtc-lib.a

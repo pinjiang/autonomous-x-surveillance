@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgst-rtsp-lib.a  CMakeFiles/gst-rtsp-lib.dir/gst_rtsp.c.o
+/usr/bin/ranlib libgst-rtsp-lib.a
