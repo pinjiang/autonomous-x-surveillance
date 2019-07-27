@@ -18,52 +18,62 @@
 #include "utils.h"
 #include "msg_handlers.h"
 
-static volatile gboolean g_running_flag = FALSE;
+#include "viewer_soup_server.h"
 
+#define G_MESSAGES_PREFIXED "auto-x-survelliance"
+#define G_LOG_DOMAIN "auto-x-survelliance"
+
+/* global variables */
+static volatile gboolean g_running_flag = FALSE;
 GMainLoop *loop;
+SoupServer *server;
+SoupWebsocketConnection *ws_conn = NULL;
 ApplicationCtx g_app_ctx = {APP_STATE_UNKNOWN, NULL, NULL, NULL};
 
-static const gchar *g_config_file = NULL;
-static const gchar *g_verbose = NULL;
-
+/* options from config file */
 static gboolean disable_ssl = TRUE;
 static gchar *g_url;
+gchar *g_id;
+gchar *g_peer_id = "XXXX";
+gchar *g_stunserver;
 
-// gchar *g_id;
-// gchar *g_peer_id = "XXXX";
-// gchar *g_stunserver;
-// GHashTable* g_ctx_tbl;
-// SoupWebsocketConnection *ws_conn = NULL;
+/* options from command line */
+static const gchar *opt_config_file = NULL;
+static const gchar *opt_verbose = NULL;
+static const char *opt_tls_cert_file;
+static const char *opt_tls_key_file;
+static gint opt_listen_port = 4000;
+
 
 static GOptionEntry entries[] = {
-  { "config",  0, 0, G_OPTION_ARG_STRING, &g_config_file, "Config File", NULL },
-  { "verbose", 'v', 0, G_OPTION_ARG_STRING, &g_verbose, "Be verbose", NULL },
+  { "config",    0,  0, G_OPTION_ARG_STRING, &opt_config_file,   "Config File", NULL },
+  { "verbose",  'v', 0, G_OPTION_ARG_STRING, &opt_verbose,       "Be verbose", NULL },
+  { "cert-file",'c', 0, G_OPTION_ARG_STRING, &opt_tls_cert_file, "Use FILE as the TLS certificate file", "FILE" },
+  { "key-file", 'k', 0, G_OPTION_ARG_STRING, &opt_tls_key_file,  "Use FILE as the TLS private key file", "FILE" },
+  { "port",     'p', 0, G_OPTION_ARG_INT,    &opt_listen_port,   "Port to listen on", NULL },
   { NULL },
 };
 
-static void _dummy(const gchar *log_domain,
-                     GLogLevelFlags log_level,
-                     const gchar *message,
-                     gpointer user_data )
-
-{
-  /* Dummy does nothing */ 
-  return ;      
-}
-
 /*********************************************************************************************
- * Description:                                                                              *                                                 
+ * Description:                                                                              *
  *                                                                                           *
  * Input :                                                                                   *
  * Return:                                                                                   *
  *********************************************************************************************/
 void sigint_func(int sig) {
-   g_running_flag = FALSE;
+  g_running_flag = FALSE;
+  // g_main_loop_quit(main_loop);
+  // return G_SOURCE_REMOVE;
+}
+
+static void quit (int sig) {
+  /* Exit cleanly on ^C in case we're valgrinding. */
+  exit (0);
 }
 
 
 /*********************************************************************************************
- * Description:                                                                              *                                                 
+ * Description:                                                                              *
  *                                                                                           *
  * Input :                                                                                   *
  * Return:                                                                                   *
@@ -75,11 +85,11 @@ static gboolean register_with_server () {
   gpointer key, value;
   g_hash_table_iter_init (&iter, g_app_ctx.inst_tbl);
 
-  if (soup_websocket_connection_get_state (g_app_ctx.ws_conn) !=
+  if (soup_websocket_connection_get_state (ws_conn) !=
       SOUP_WEBSOCKET_STATE_OPEN)
     return FALSE;
 
-  g_info("Registering id %s with server\n", g_app_ctx.id);
+  g_info("Registering id %s with server\n", g_id);
   while (g_hash_table_iter_next (&iter, &key, &value)) {
     // do something with key and value
     InstanceCtx* ctx = (InstanceCtx *)value;
@@ -90,18 +100,18 @@ static gboolean register_with_server () {
    * by on_server_message() */
   content = json_object_new();
   json_object_set_string_member (content, "type", "register");
-  json_object_set_string_member (content, "uid", g_app_ctx.id);
+  json_object_set_string_member (content, "uid", g_id);
   msg = json_object_new();
   json_object_set_string_member (msg, "direction", "cs");
   json_object_set_int_member (msg, "seq", 1);
-  json_object_set_string_member (msg, "from", g_app_ctx.id);
+  json_object_set_string_member (msg, "from", g_id);
   json_object_set_string_member (msg, "role", "vehicle.video");
   json_object_set_object_member (msg, "content", content);
 
   text = get_string_from_json_object (msg);
   json_object_unref (msg);
 
-  soup_websocket_connection_send_text (g_app_ctx.ws_conn, text);
+  soup_websocket_connection_send_text (ws_conn, text);
   g_free (text);
   return TRUE;
 }
@@ -178,13 +188,13 @@ static void on_server_message (SoupWebsocketConnection * conn, SoupWebsocketData
   }
   content = json_object_get_object_member (object, "content");
 
-#if 0
   if (!json_object_has_member (object, "from")) {    /* Check from field of JSON message */
     g_warning ("received message without 'from'");
     goto out;
   }
   from = json_object_get_string_member (object, "from");
 
+#if 0
   if (!json_object_has_member (object, "to")) {  /* Check from field of JSON message */
     cleanup_and_quit_loop ("ERROR: received message without 'to'", 0);
     goto out;
@@ -220,14 +230,14 @@ static void on_server_connected (SoupSession * session, GAsyncResult * res) {
   
   g_hash_table_iter_init (&iter, g_app_ctx.inst_tbl);
 
-  g_app_ctx.ws_conn = soup_session_websocket_connect_finish (session, res, &error);
+  ws_conn = soup_session_websocket_connect_finish (session, res, &error);
   if (error) {
     cleanup_and_quit_loop (&g_app_ctx, error->message, SERVER_CONNECTION_ERROR);
     g_error_free (error);
     return;
   }
 
-  g_assert_nonnull (g_app_ctx.ws_conn);
+  g_assert_nonnull (ws_conn);
 
 
   /* Update per gstreamer pipeline context */
@@ -238,8 +248,8 @@ static void on_server_connected (SoupSession * session, GAsyncResult * res) {
 
   g_info ("Connected to signalling server\n");
 
-  g_signal_connect (g_app_ctx.ws_conn, "closed",  G_CALLBACK (on_server_closed),  NULL);
-  g_signal_connect (g_app_ctx.ws_conn, "message", G_CALLBACK (on_server_message), NULL);
+  g_signal_connect (ws_conn, "closed",  G_CALLBACK (on_server_closed),  NULL);
+  g_signal_connect (ws_conn, "message", G_CALLBACK (on_server_message), NULL);
 
   /* Register with the server so it knows about us and can accept commands */
   register_with_server();
@@ -273,7 +283,7 @@ static void connect_to_websocket_server_async () {
 
   message = soup_message_new (SOUP_METHOD_GET, g_url);
 
-  g_info ("Connecting to server... %s\n", g_url);
+  g_info ("Connecting to server...\n");
 
   /* Once connected, we will register */
   soup_session_websocket_connect_async (session, message, NULL, NULL, NULL, (GAsyncReadyCallback) on_server_connected, NULL);
@@ -361,30 +371,28 @@ static gboolean read_config(const char* filename) {
     g_printerr ("ERROR: received message without 'Url'");
     goto err;
   }
-  // g_url = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Url")));
-  // strcpy(g_url, json_object_get_string_member (object, "Url"));
-  g_url = g_strdup(json_object_get_string_member (object, "Url"));
+  g_url = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Url")));
+  strcpy(g_url, json_object_get_string_member (object, "Url"));
   
   if (!json_object_has_member (object, "Id")) {         
     g_printerr ("ERROR: received message without 'Id'");
     goto err;
   }
-  // g_id = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Id")));
-  // strcpy(g_id, json_object_get_string_member (object, "Id"));
-  g_app_ctx.id = g_strdup(json_object_get_string_member (object, "Id"));
+  g_id = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Id")));
+  strcpy(g_id, json_object_get_string_member (object, "Id"));
   
   if (!json_object_has_member (object, "Stun-Server")) { 
     g_printerr ("ERROR: received message without 'Stun-Server'");
     goto err;
   } 
-  // g_stunserver = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Stun-Server")));
-  // strcpy(g_stunserver, json_object_get_string_member (object, "Stun-Server"));
-  g_app_ctx.stunserver = g_strdup(json_object_get_string_member (object, "Stun-Server"));
+  g_stunserver = (char *)g_malloc0(strlen(json_object_get_string_member (object, "Stun-Server")));
+  strcpy(g_stunserver, json_object_get_string_member (object, "Stun-Server"));
   
   if (!json_object_has_member (object, "Camera Pipelines")) {
     g_printerr ("ERROR: received message without 'Camera Pipelines'");
     goto err;
   }
+  
   pipelines = json_object_get_object_member(object, "Camera Pipelines");
   keys   = json_object_get_members (json_object_get_object_member(object, "Camera Pipelines")); 
   
@@ -392,15 +400,12 @@ static gboolean read_config(const char* filename) {
     
   for (int i = 0; i < MIN(nums, g_slist_length(keys)); i++) {
     InstanceCtx* p_ctx = g_new0(InstanceCtx, 1);
-    // p_ctx->index = g_malloc0(strlen((const char *)g_slist_nth_data(keys, i)));
-    // strcpy(p_ctx->index, (const char *)g_slist_nth_data(keys, i));
-    p_ctx->index = g_strdup(g_slist_nth_data(keys, i));
+    p_ctx->index = g_malloc0(strlen((const char *)g_slist_nth_data(keys, i)));
+    strcpy(p_ctx->index, (const char *)g_slist_nth_data(keys, i));
     gpointer key = p_ctx->index;
     g_info("Read %s: %s", (char *)key, json_object_get_string_member(pipelines, (const char *)key) );
-    // p_ctx->pipeline_str = g_malloc0(strlen(json_object_get_string_member(pipelines, (const char *)key)));
-    // strcpy(p_ctx->pipeline_str, json_object_get_string_member(pipelines, (const char *)key));
-    p_ctx->pipeline_str = g_strdup(json_object_get_string_member(pipelines, (const char *)key));
-    // p_ctx->session
+    p_ctx->pipeline_str = g_malloc0(strlen(json_object_get_string_member(pipelines, (const char *)key)));
+    strcpy(p_ctx->pipeline_str, json_object_get_string_member(pipelines, (const char *)key));
     g_hash_table_insert(g_app_ctx.inst_tbl, key, p_ctx); 
   } 
   
@@ -415,16 +420,18 @@ static gboolean read_config(const char* filename) {
     return FALSE;
 }
 
+
 /*********************************************************************************************
  * Description:                                                                              *                                                 
  *                                                                                           *
  * Input :                                                                                   *
  * Return:                                                                                   *
  *********************************************************************************************/
-int main (int argc, char *argv[]) {
+int main (int argc, char *argv[]) 
+{
   GOptionContext *context;
   GError *error = NULL;
-
+  
   context = g_option_context_new ("- gstreamer webrtc recv demo");
   g_option_context_add_main_entries (context, entries, NULL);
   g_option_context_add_group (context, gst_init_get_option_group ());
@@ -434,20 +441,20 @@ int main (int argc, char *argv[]) {
   }
 
   /* Set dummy for all levels */
-  g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, _dummy, NULL);
+  // g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, _dummy, NULL);
 
-  if(!g_verbose) {
+  if(!opt_verbose) {
     g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, g_log_default_handler, NULL);
-  } else if(!strncmp("vv", g_verbose, 2)) {   /* If -vv passed set to ONLY debug */
+  } else if(!strncmp("vv", opt_verbose, 2)) {   /* If -vv passed set to ONLY debug */
     g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,  g_log_default_handler, NULL);
-  } else if(!strncmp("v", g_verbose, 1)) { /* If -v passed set to ONLY info */
+  } else if(!strncmp("v", opt_verbose, 1)) { /* If -v passed set to ONLY info */
     g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, g_log_default_handler, NULL);
   } else { /* For everything else, set to back to default*/
     g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, g_log_default_handler, NULL);
   }
   
-  if (!g_config_file ) {
-    g_printerr ("--config and --peer-id is a required argument\n");
+  if (!opt_config_file ) {
+    g_printerr ("--config is a required argument\n");
     g_printerr ("%s", g_option_context_get_help (context, TRUE, NULL));
     return -1;
   }
@@ -455,12 +462,12 @@ int main (int argc, char *argv[]) {
   if (!check_plugins ())
     return -1;
 	
-  if(!read_config(g_config_file)) {
+  if(!read_config(opt_config_file)) {
     g_printerr("Error parsing JSON config file\n");
     return -1;
   }
 
-  // signal(SIGINT, sigint_func);
+  signal(SIGINT, quit);
   
   /* Disable ssl when running a localhost server, because
    * it's probably a test server with a self-signed certificate */
@@ -478,8 +485,16 @@ int main (int argc, char *argv[]) {
   }
 
   loop = g_main_loop_new (NULL, FALSE);
+
+  start_server(opt_listen_port, opt_tls_cert_file, opt_tls_key_file);
+
   connect_to_websocket_server_async();
-  g_main_loop_run (loop);
+  g_main_loop_run(loop);
+
+  g_info ("Stop HTTP Server\n");
+  soup_server_quit(server);
+  g_object_unref(G_OBJECT(server));
+
   g_main_loop_unref (loop);
  
   return 0;

@@ -2,6 +2,7 @@ project(gst-webrtc-device C)
 
 set(CMAKE_BUILD_TYPE DEBUG)
 # DEBUG/MINSIZEREL/RELWITHDEBINFO/RELEASE
+set(CMAKE_C_FLAGS "-DG_LOG_DOMAIN=\\\"gst_webrtc_device\\\"")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS}")
@@ -24,6 +25,7 @@ target_sources(gst-webrtc-device
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${JSON_GLIB_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/utils)
 
 target_link_libraries(${PROJECT_NAME}
     gst-webrtc-lib
