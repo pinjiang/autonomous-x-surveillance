@@ -1,86 +1,131 @@
-<html lang="cn">
+<!DOCTYPE html>
+<html lang="en">
   <head>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/jquery-treegrid/0.2.0/css/jquery.treegrid.min.css" rel="stylesheet">
-<link href="https://unpkg.com/bootstrap-table@1.15.3/dist/bootstrap-table.min.css" rel="stylesheet">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-	 <script src="js/jquery.min.js"></script>
+    <title>Bootstrap 4, from LayoutIt!</title>
+
+    <meta name="description" content="Source code generated using layoutit.com">
+    <meta name="author" content="LayoutIt!">
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
+    <script src="js/bootstrap-treeview.js"></script> 
     <script src="js/scripts.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-treegrid/0.2.0/js/jquery.treegrid.min.js"></script>
-<script src="https://unpkg.com/bootstrap-table@1.15.3/dist/bootstrap-table.min.js"></script>
-<script src="https://unpkg.com/bootstrap-table@1.15.3/dist/extensions/treegrid/bootstrap-table-treegrid.min.js"></script>
-	   </head>
+  </head>
   <body>
-<table id="table"></table>
 
-<script>
-  var $table = $('#table')
-
-  $(function() {
-    $table.bootstrapTable({
-      url: 'json/treegrid.json',
-      striped: true,
-      sidePagination: 'server',
-      idField: 'id',
-      showColumns: true,
-      columns: [
-        {
-          field: 'ck',
-          checkbox: true
-        },
-        {
-          field: 'name',
-          title: '名称'
-        },
-        {
-          field: 'status',
-          title: '状态',
-          sortable: true,
-          align: 'center',
-          formatter: 'statusFormatter'
-        },
-        {
-          field: 'permissionValue',
-          title: '权限值'
-        }
-      ],
-      treeShowField: 'name',
-      parentIdField: 'pid',
-      onPostBody: function() {
-        var columns = $table.bootstrapTable('getOptions').columns
-
-        if (columns && columns[0][1].visible) {
-          $table.treegrid({
-            treeColumn: 1,
-            onChange: function() {
-              $table.bootstrapTable('resetWidth')
-            }
-          })
-        }
-      }
-    })
-  })
-
-  function typeFormatter(value, row, index) {
-    if (value === 'menu') {
-      return '菜单'
-    }
-    if (value === 'button') {
-      return '按钮'
-    }
-    if (value === 'api') {
-      return '接口'
-    }
-    return '-'
-  }
-
-  function statusFormatter(value, row, index) {
-    if (value === 1) {
-      return '<span class="label label-success">正常</span>'
-    }
-    return '<span class="label label-default">锁定</span>'
-  }
-</script>
-	  
-	    </body>
+    <div class="container-fluid">
+	<div class="row">
+		<div class="col-md-12">
+			<div class="tabbable" id="tabs-53403">
+				<ul class="nav nav-tabs">
+					<li class="nav-item">
+						<a class="nav-link active show" href="#tab1" data-toggle="tab">设备管理</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="#tab2" data-toggle="tab">云操控性能监测</a>
+          </li>
+          <li class="nav-item">
+						<a class="nav-link" href="#tab3" data-toggle="tab">人员管理</a>
+					</li>
+				</ul>
+				<div class="tab-content">
+					<div class="tab-pane active" id="tab1">
+						<p>
+              Howdy, I'm in Section 1.
+              <div id="tree"></div>
+						</p>
+					</div>
+					
+          <div class="tab-pane" id="tab2">
+						<p>
+            <div class="col-md-12">
+              <button type="button" onclick="openSocket();" >Open</button>
+            </div>
+            <div class="row clearfix">
+              <div class="col-md-4 column">
+                <div>
+                  <input type="text" id="messageinput"/>
+									<button type="button" onclick="send();" >打开</button>
+									<button type="button" onclick="closeSocket();" >关闭</button>
+								</div>
+                <div>
+                  <table class="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>字段</th>
+                            <th>数值</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <th scope="row" id="codecs_encryption">codecs/encryption</th>
+                            <td id="codecs_encryption"></td>
+                          </tr>
+                          <tr>
+                            <th scope="row" id="frameHeightWidthReceived">frame resolution</th>
+                            <td id="frameHeightWidthReceived_1"></td>
+                          </tr>
+                          <tr>
+                            <th scope="row" id="frameRateOutput">frame rate(fps)</th>
+                            <td id="frameRateOutput"></td>
+                          </tr>
+                          <tr>
+                            <th scope="row" id="bytesReceived">bytes received(second/total)</th>
+                            <td id="bytesReceived"></td>
+                          </tr>
+                          <tr>
+                            <th scope="row" id="packetsReceivedLost">packets lost(%)</th>
+                            <td id="packetsReceivedLost"></td>
+                          </tr>
+                          <tr>
+                            <th scope="row" id="latency">latency(ms)</th>
+                            <td id="latency"></td>
+                          </tr>
+                          <tr>
+                            <th scope="row" id="jitterbufferms">jitter buffer(ms)</th>
+                            <td id="jitterbufferms"></td>
+                          </tr>
+                           <tr>
+                            <th scope="row" id="availreceivebw">availreceivebw(bps)</th>
+                            <td id="availreceivebw"></td>
+                          </tr>         
+                          <tr>
+                            <th scope="row" id="nackplifir">nackplifir(nac/pli/fir)</th>
+                            <td id="nackplifir"></td>
+                          </tr>                  
+                         </tbody>
+                    </table>
+               </div>
+            </div>
+              <div class="col-md-4 column">
+                <div>
+                  <input type="text" id="messageinput"/>
+									<button type="button" onclick="send();">打开</button>
+									<button type="button" onclick="closeSocket();">关闭</button>
+								</div>
+               </div>
+               <div class="col-md-4 column">
+                <div>
+                  <input type="text" id="messageinput"/>
+									<button type="button" onclick="send();">打开</button>
+									<button type="button" onclick="closeSocket();">关闭</button>
+								</div>
+              </div>
+            </div>
+						</p>
+          </div>   <!-- tab-pane" id="tab2" -->
+          <div class="tab-pane" id="tab3">
+          </div>
+				</div>  <!-- tab-content -->
+			</div>
+		</div>
+	</div>
+</div>
+  </body>
 </html>

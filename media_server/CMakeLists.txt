@@ -21,7 +21,7 @@ add_executable(gst-viewer "")
 target_sources(gst-viewer
     PRIVATE
         main.c
-        viewer_soup_server.c
+        media_server.c
         ${CMAKE_CURRENT_LIST_DIR}/../utils/utils.c
 )
 
