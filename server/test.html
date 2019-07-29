@@ -11,121 +11,229 @@
     <meta name="author" content="LayoutIt!">
 
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="js/plugins/bootstrap-treeview/bootstrap-treeview.min.css">
+    <link rel="stylesheet" type="text/css" href="js/plugins/bootstrap-dialog/bootstrap-dialog.min.css">
     <link href="css/style.css" rel="stylesheet">
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
-    <script src="js/bootstrap-treeview.js"></script> 
+    <script type="text/javascript" src="js/plugins/bootstrap-treeview/bootstrap-treeview.js"></script>
+    <script type="text/javascript" src="js/plugins/bootstrap-dialog/bootstrap-dialog.min.js"></script>
+    <script type="text/javascript" src="js/customPlugin.js"></script>
     <script src="js/scripts.js"></script>
   </head>
   <body>
-
-    <div class="container-fluid">
-	<div class="row">
-		<div class="col-md-12">
-			<div class="tabbable" id="tabs-53403">
-				<ul class="nav nav-tabs">
-					<li class="nav-item">
-						<a class="nav-link active show" href="#tab1" data-toggle="tab">设备管理</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link" href="#tab2" data-toggle="tab">云操控性能监测</a>
-          </li>
-          <li class="nav-item">
-						<a class="nav-link" href="#tab3" data-toggle="tab">人员管理</a>
-					</li>
-				</ul>
-				<div class="tab-content">
-					<div class="tab-pane active" id="tab1">
-						<p>
-              Howdy, I'm in Section 1.
-              <div id="tree"></div>
-						</p>
-					</div>
-					
-          <div class="tab-pane" id="tab2">
-						<p>
+      <div class="container-fluid">
+          <div class="row">
             <div class="col-md-12">
-              <button type="button" onclick="openSocket();" >Open</button>
-            </div>
-            <div class="row clearfix">
-              <div class="col-md-4 column">
-                <div>
-                  <input type="text" id="messageinput"/>
-									<button type="button" onclick="send();" >打开</button>
-									<button type="button" onclick="closeSocket();" >关闭</button>
-								</div>
-                <div>
-                  <table class="table table-bordered">
-                        <thead>
-                          <tr>
-                            <th>字段</th>
-                            <th>数值</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <th scope="row" id="codecs_encryption">codecs/encryption</th>
-                            <td id="codecs_encryption"></td>
-                          </tr>
-                          <tr>
-                            <th scope="row" id="frameHeightWidthReceived">frame resolution</th>
-                            <td id="frameHeightWidthReceived_1"></td>
-                          </tr>
-                          <tr>
-                            <th scope="row" id="frameRateOutput">frame rate(fps)</th>
-                            <td id="frameRateOutput"></td>
-                          </tr>
-                          <tr>
-                            <th scope="row" id="bytesReceived">bytes received(second/total)</th>
-                            <td id="bytesReceived"></td>
-                          </tr>
-                          <tr>
-                            <th scope="row" id="packetsReceivedLost">packets lost(%)</th>
-                            <td id="packetsReceivedLost"></td>
-                          </tr>
-                          <tr>
-                            <th scope="row" id="latency">latency(ms)</th>
-                            <td id="latency"></td>
-                          </tr>
-                          <tr>
-                            <th scope="row" id="jitterbufferms">jitter buffer(ms)</th>
-                            <td id="jitterbufferms"></td>
-                          </tr>
-                           <tr>
-                            <th scope="row" id="availreceivebw">availreceivebw(bps)</th>
-                            <td id="availreceivebw"></td>
-                          </tr>         
-                          <tr>
-                            <th scope="row" id="nackplifir">nackplifir(nac/pli/fir)</th>
-                            <td id="nackplifir"></td>
-                          </tr>                  
-                         </tbody>
-                    </table>
-               </div>
-            </div>
-              <div class="col-md-4 column">
-                <div>
-                  <input type="text" id="messageinput"/>
-									<button type="button" onclick="send();">打开</button>
-									<button type="button" onclick="closeSocket();">关闭</button>
-								</div>
-               </div>
-               <div class="col-md-4 column">
-                <div>
-                  <input type="text" id="messageinput"/>
-									<button type="button" onclick="send();">打开</button>
-									<button type="button" onclick="closeSocket();">关闭</button>
-								</div>
+                <div class="tabbable" id="tabs-53403">
+                  <ul class="nav nav-tabs">
+                <li class="nav-item">
+                  <a class="nav-link active show" href="#tab1" data-toggle="tab">设备管理</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="#tab2" data-toggle="tab">云操控性能监测</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="#tab3" data-toggle="tab">人员管理</a>
+                </li>
+                  </ul>
+                  <div class="tab-content">
+                <div class="tab-pane active" id="tab1">
+                  <header class="container" style="margin-bottom: 35px;">
+                      <div class="col-md-12">
+                        <input id="btnAdd" class="btn btn-primary" type="button" value="添加节点">
+                        <input id="btnMove" class="btn btn-success" type="button" value="节点移动">
+                        <input id="btnDel" class="btn btn-danger" type="button" value="删除节点">
+                      </div>
+                  </header>
+                  <div class="container">
+                  <div class="row">
+                      <div class="col-md-4">
+                        <div class="panel panel-primary ">
+                            <div class="panel-heading">
+                              <h3 class="panel-title">设备树</h3>
+                            </div>
+                            <div class="panel-body right_centent" style="">
+                              <div id="left-tree"></div>
+                            </div>
+                          </div>
+                      </div>
+                      <div class="col-md-8">
+                          <div class="panel panel-primary ">
+                            <div class="panel-heading">
+                              <h3 class="panel-title">编辑区</h3>
+                            </div>
+                            <!--编辑操作权限 start-->
+                            <div class="panel-body right_centent">
+                              <div  id="editShow">
+                                <div>
+                                  <div class="input-group margin-t-5">
+                                    <span class="input-group-addon" >名称:</span>         
+                                      <input id="editName" type="text"  class="form-control" />
+                                  </div>
+                                  <div class="input-group margin-t-5">
+                                      <span class="input-group-addon">类型:</span>
+                                      <input id="addPassword" type="text" class="form-control" />
+                                  </div>
+                                  <div class="input-group margin-t-5">
+                                      <span class="input-group-addon">网络地址:</span>
+                                      <input id="addAddress" type="text" class="form-control" />
+                                  </div>
+                                  <div class="input-group margin-t-5">
+                                      <span class="input-group-addon">用户名:</span>
+                                      <input id="addId" type="text" class="form-control" />
+                                  </div>
+                                  <div class="input-group margin-t-5">
+                                      <span class="input-group-addon">密码:</span>
+                                      <input id="addPassword" type="text" class="form-control" />
+                                  </div>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                  <input id="Edit" class="btn btn-primary" type="button" value="确定" />
+                                  <input id="Edit_cancel" class="btn btn-default" type="button" style="margin-left:80px;display:none;" value="取消" />
+                                </div>
+                              </div>
+                            </div>  <!--编辑操作权限 end-->
+                        </div>  <!-- <div class="panel panel-primary " >-->
+                      </div> <!-- <div class="col-md-8"> -->
+                  </div> <!--<div class="row"> -->
+                  <div>
+                          <!--弹出框 新增权限 start-->
+                          <div class="modal fade" id="addOperation-dialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+                            <div class="modal-dialog" role="document">
+                      
+                              <div class="modal-content radius_5">
+                                <div class="modal-header">
+                                  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                  <h4 class="modal-title" id="myModalLabel">新增</h4>
+                                </div>
+                                <div class="modal-body">
+                                  <div group="" item="add">
+                                    <div>
+                                      <div class="input-group margin-t-5">
+                                        <span class="input-group-addon">名称:</span>
+                                        <input id="addName" type="text" class="form-control" />
+                                      </div>
+                                      <div class="input-group margin-t-5">
+                                          <span class="input-group-addon">类型:</span>
+                                          <input id="addPassword" type="text" class="form-control" />
+                                      </div>
+                                      <div class="input-group margin-t-5">
+                                          <span class="input-group-addon">网络地址:</span>
+                                          <input id="addAddress" type="text" class="form-control" />
+                                      </div>
+                                      <div class="input-group margin-t-5">
+                                          <span class="input-group-addon">用户名:</span>
+                                          <input id="addId" type="text" class="form-control" />
+                                      </div>
+                                      <div class="input-group margin-t-5">
+                                          <span class="input-group-addon">密码:</span>
+                                          <input id="addPassword" type="text" class="form-control" />
+                                      </div>
+                                    </div>
+                                  </div>
+                      
+                                </div>
+                                <div class="modal-footer">
+                                  <button id="Save" type="button" class="btn btn-primary">保存</button>
+                                  <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                      
+                                </div>
+                              </div>
+                      
+                      
+                            </div>
+                          </div>
+                          <!--弹出框 新增权限 end-->   
+                  </div>
+                </div>   <!-- tab1 -->
+                </div>
+                <div class="tab-pane" id="tab2">
+                  <p>
+                  <div class="col-md-12">
+                      <select class="selectpicker">
+                      </select>
+                    <button type="button" onclick="openSocket();" >连接后台</button>
+                  </div>
+                  <div class="row clearfix">
+                    <div class="col-md-4 column">
+                      <div>
+                        <input type="text" id="messageinput"/>
+                        <button type="button" onclick="send();" >打开</button>
+                        <button type="button" onclick="closeSocket();" >关闭</button>
+                      </div>
+                      <div>
+                        <table class="table table-bordered">
+                              <thead>
+                                <tr>
+                                  <th>字段</th>
+                                  <th>数值</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <th scope="row" id="codecs_encryption">codecs/encryption</th>
+                                  <td id="codecs_encryption"></td>
+                                </tr>
+                                <tr>
+                                  <th scope="row" id="frameHeightWidthReceived">frame resolution</th>
+                                  <td id="frameHeightWidthReceived_1"></td>
+                                </tr>
+                                <tr>
+                                  <th scope="row" id="frameRateOutput">frame rate(fps)</th>
+                                  <td id="frameRateOutput"></td>
+                                </tr>
+                                <tr>
+                                  <th scope="row" id="bytesReceived">bytes received(second/total)</th>
+                                  <td id="bytesReceived"></td>
+                                </tr>
+                                <tr>
+                                  <th scope="row" id="packetsReceivedLost">packets lost(%)</th>
+                                  <td id="packetsReceivedLost"></td>
+                                </tr>
+                                <tr>
+                                  <th scope="row" id="latency">latency(ms)</th>
+                                  <td id="latency"></td>
+                                </tr>
+                                <tr>
+                                  <th scope="row" id="jitterbufferms">jitter buffer(ms)</th>
+                                  <td id="jitterbufferms"></td>
+                                </tr>
+                                 <tr>
+                                  <th scope="row" id="availreceivebw">availreceivebw(bps)</th>
+                                  <td id="availreceivebw"></td>
+                                </tr>         
+                                <tr>
+                                  <th scope="row" id="nackplifir">nackplifir(nac/pli/fir)</th>
+                                  <td id="nackplifir"></td>
+                                </tr>                  
+                               </tbody>
+                          </table>
+                     </div>
+                  </div>
+                    <div class="col-md-4 column">
+                      <div>
+                        <input type="text" id="messageinput"/>
+                        <button type="button" onclick="send();">打开</button>
+                        <button type="button" onclick="closeSocket();">关闭</button>
+                      </div>
+                     </div>
+                     <div class="col-md-4 column">
+                      <div>
+                        <input type="text" id="messageinput"/>
+                        <button type="button" onclick="send();">打开</button>
+                        <button type="button" onclick="closeSocket();">关闭</button>
+                      </div>
+                    </div>
+                  </div>
+                  </p>
+                </div>   <!-- tab-pane" id="tab2" -->
+                <div class="tab-pane" id="tab3">
+                </div>
+                </div>  <!-- tab-content -->
               </div>
             </div>
-						</p>
-          </div>   <!-- tab-pane" id="tab2" -->
-          <div class="tab-pane" id="tab3">
           </div>
-				</div>  <!-- tab-content -->
-			</div>
-		</div>
-	</div>
-</div>
+      </div>
   </body>
 </html>

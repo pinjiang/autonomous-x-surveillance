@@ -259,8 +259,8 @@ static void on_message(SoupWebsocketConnection *conn, gint type, GBytes *message
     ptr = g_bytes_get_data(message, &sz);
     g_debug("Received text data: %s", ptr);
     info.location = ptr;
-    info.user_id = "admin";
-    info.user_pwd = "vlab123!";
+    // info.user_id = "admin";
+    // info.user_pwd = "vlab123!";
     
     start_pipeline(&info, app->loop);  
     // soup_websocket_connection_send_text(conn, (is_wss) ? "Hello Secure Websocket !" : "Hello Websocket !");
