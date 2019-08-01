@@ -69,23 +69,23 @@
                                 <div>
                                   <div class="input-group margin-t-5">
                                     <span class="input-group-addon" >名称:</span>         
-                                      <input id="editName" type="text"  class="form-control" />
+                                    <input id="editName" type="text"  class="form-control" />
                                   </div>
                                   <div class="input-group margin-t-5">
                                       <span class="input-group-addon">类型:</span>
-                                      <input id="addPassword" type="text" class="form-control" />
+                                      <input id="editType" type="text" class="form-control" />
                                   </div>
                                   <div class="input-group margin-t-5">
                                       <span class="input-group-addon">网络地址:</span>
-                                      <input id="addAddress" type="text" class="form-control" />
+                                      <input id="editUrl" type="text" class="form-control" />
                                   </div>
                                   <div class="input-group margin-t-5">
                                       <span class="input-group-addon">用户名:</span>
-                                      <input id="addId" type="text" class="form-control" />
+                                      <input id="editUsername" type="text" class="form-control" />
                                   </div>
                                   <div class="input-group margin-t-5">
                                       <span class="input-group-addon">密码:</span>
-                                      <input id="addPassword" type="text" class="form-control" />
+                                      <input id="editPassword" type="text" class="form-control" />
                                   </div>
                                 </div>
                                 <div style="margin-top: 10px;">
@@ -149,20 +149,51 @@
                 </div>   <!-- tab1 -->
                 </div>
                 <div class="tab-pane" id="tab2">
-                  <p>
-                  <div class="col-md-12">
-                      <select class="selectpicker">
-                      </select>
-                    <button type="button" onclick="openSocket();" >连接后台</button>
+                  <div class="row clearfix">
+                        <div class="col-md-1 column">
+                            <select class="selectpicker">
+                            </select>
+                        </div>
+                        <div class="col-md-7 column">
+                          <table class="table">
+                            <thead>
+                              <tr>
+                                <th>
+                                  编号
+                                </th>
+                                <th>
+                                  产品
+                                </th>
+                                <th>
+                                  上线时间
+                                </th>
+                                <th>
+                                  状态
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                          </table>
+                        </div>
+                        <div class="col-md-4 column">
+                            <button type="button" onclick="openSocket();">连接后台</button>
+                            <button type="button" onclick="closeSocket();">断开后台</button>
+                        </div>
                   </div>
                   <div class="row clearfix">
                     <div class="col-md-4 column">
                       <div>
-                        <input type="text" id="messageinput"/>
-                        <button type="button" onclick="send();" >打开</button>
-                        <button type="button" onclick="closeSocket();" >关闭</button>
+                        <input type="text" id="url"/>
+                        <input type="text" id="username"/>
+                        <input type="text" id="password"/>
+                        <button type="button" onclick="openVideo();">打开</button>
+                        <button type="button" onclick="closeVideo();">关闭</button>
                       </div>
-                      <div>
+                      <a class="btn btn-info" role="button" data-toggle="collapse" href="#detail_stats_1" aria-expanded="false" aria-controls="collapseExample">
+                          详细统计量
+                      </a>
+                      <div class="collapse" id="detail_stats_1">
                         <table class="table table-bordered">
                               <thead>
                                 <tr>
@@ -208,25 +239,30 @@
                                   <td id="nackplifir"></td>
                                 </tr>                  
                                </tbody>
-                          </table>
+                        </table>
                      </div>
+                     <div class="alert alert-success alert-dismissable nofollow">
+                        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+                        <h4>
+                          警告！
+                        </h4> <strong>警告！</strong> 这里是警告的内容<a rel="nofollow" href="#" class="alert-link">查看</a>
+                      </div>
                   </div>
                     <div class="col-md-4 column">
                       <div>
                         <input type="text" id="messageinput"/>
-                        <button type="button" onclick="send();">打开</button>
-                        <button type="button" onclick="closeSocket();">关闭</button>
+                        <button type="button" onclick="openVideo();">打开</button>
+                        <button type="button" onclick="closeVideo();">关闭</button>
                       </div>
                      </div>
                      <div class="col-md-4 column">
                       <div>
                         <input type="text" id="messageinput"/>
-                        <button type="button" onclick="send();">打开</button>
-                        <button type="button" onclick="closeSocket();">关闭</button>
+                        <button type="button" onclick="openVideo();">打开</button>
+                        <button type="button" onclick="closeVideo();">关闭</button>
                       </div>
                     </div>
                   </div>
-                  </p>
                 </div>   <!-- tab-pane" id="tab2" -->
                 <div class="tab-pane" id="tab3">
                 </div>
