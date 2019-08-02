@@ -11,28 +11,28 @@ var tree = [
       {
         text   : "前视",
         type   : "camera",
-        url    : "http://127.0.0.1:7001:18554",
+        url    : "http://127.0.0.1:7001",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "左视",
         type   : "camera",
-        url    : "http://127.0.0.1:7001:18554",
+        url    : "http://127.0.0.1:7002",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "右视",
         type   : "camera",
-        url    : "http://127.0.0.1:7001:18554",
+        url    : "http://127.0.0.1:7003",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "后视",
         type   : "camera",
-        url    : "http://127.0.0.1:7001:18554",
+        url    : "http://127.0.0.1:7004",
         user_id: "",
         user_pw: ""
       }
@@ -49,6 +49,15 @@ var tree = [
     type : "machinery"
   }, 
 ];  
+
+//获取树数据
+function getTree(){
+  return tree;             
+}
+
+function getNode(){
+  
+}
                     
 function openSocket(){
   // Ensures only one connection is open at a time
@@ -93,27 +102,28 @@ function closeSocket(){
   webSocket.close();
 }
 
-function openVideo() {
-  /* var url = document.getElementById("url").value;
+function openVideo(id) {
+  var name = document.getElementById("name").value;
+  var url = document.getElementById("url").value;
   var user_id = document.getElementById("username").value;
   var user_pw = document.getElementById("password").value;
 
 	var jsonObj = {
     "type"   : "play",
-    "name"   : "front",
+    "name"   : name,
     "url"    : url,
     "user_id": user_id,
     "user_pw": user_pw,
-	};*/
-  // webSocket.send(JSON.stringify(jsonObj));
-  var text = document.getElementById("url").value;
-  webSocket.send(text);
+	};
+  webSocket.send(JSON.stringify(jsonObj));
 }
 
 function closeVideo() {
+  var name = document.getElementById("name").value;
+
 	var jsonObj = {
     "type"   : "stop",
-    "name"   : "front",
+    "name"   : name,
 	};
 	webSocket.send(JSON.stringify(jsonObj));
 }
@@ -126,6 +136,19 @@ function writeResponse(text){
   e.preventDefault()
   $(this).tab('show')
 }) */
+
+function addCameraBlock() {
+  var iDiv = document.createElement('div');
+  iDiv.id = 'block';
+  iDiv.className = 'block';
+  document.body.appendChild(iDiv);
+
+  var iiDiv = document.createElement('div');
+  iiDiv.className = 'block-2';
+
+  var s = document.getElementById('block');
+  s.appendChild(iiDiv);
+}
 
 $(function(){
   onLoad();
@@ -146,7 +169,20 @@ $(function(){
            }
          },
          showCheckbox:false//是否显示多选
-      });   
+      }); 
+      
+
+      // 更新
+      var iDiv = document.createElement('div');
+      iDiv.id = 'block';
+      iDiv.className = 'block';
+      document.body.appendChild(iDiv);
+    
+      var iiDiv = document.createElement('div');
+      iiDiv.className = 'block-2';
+    
+      var s = document.getElementById('block');
+      s.appendChild(iiDiv);
   }
   
   //事件注册
@@ -215,10 +251,6 @@ $(function(){
       $("#btnMove").click(function(){
         $.showMsgText('更新中...');
       });
-      //获取树数据
-      function getTree(){
-        return tree;             
-      }
       /*-----页面pannel内容区高度自适应 start-----*/
       $(window).resize(function () {
         setCenterHeight();
@@ -231,3 +263,4 @@ $(function(){
       }
       /*-----页面pannel内容区高度自适应 end-----*/
 });
+

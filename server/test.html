@@ -132,16 +132,12 @@
                                       </div>
                                     </div>
                                   </div>
-                      
                                 </div>
                                 <div class="modal-footer">
                                   <button id="Save" type="button" class="btn btn-primary">保存</button>
                                   <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
-                      
                                 </div>
                               </div>
-                      
-                      
                             </div>
                           </div>
                           <!--弹出框 新增权限 end-->   
@@ -150,19 +146,15 @@
                 </div>
                 <div class="tab-pane" id="tab2">
                   <div class="row clearfix">
-                        <div class="col-md-1 column">
-                            <select class="selectpicker">
-                            </select>
-                        </div>
                         <div class="col-md-7 column">
                           <table class="table">
                             <thead>
                               <tr>
                                 <th>
-                                  编号
+                                  选择
                                 </th>
                                 <th>
-                                  产品
+                                  设备名称
                                 </th>
                                 <th>
                                   上线时间
@@ -173,6 +165,14 @@
                               </tr>
                             </thead>
                             <tbody>
+                              <tr>
+                                <td>
+                                  <div class="custom-control custom-radio">
+                                    <input type="radio" class="custom-control-input" id="defaultUnchecked" name="defaultExampleRadios">
+                                    <label class="custom-control-label" for="defaultUnchecked">Default unchecked</label>
+                                  </div>
+                                </td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>
@@ -182,18 +182,21 @@
                         </div>
                   </div>
                   <div class="row clearfix">
-                    <div class="col-md-4 column">
-                      <div>
+                  <div class="col-md-4 column text-center" id="camera1">
+                      <a class="btn btn-info" role="button" data-toggle="collapse" href="#camera1_config" aria-expanded="false" aria-controls="collapseExample">
+                            详细配置
+                      </a>
+                      <a class="btn btn-info" role="button" data-toggle="collapse" href="#camera1_stats" aria-expanded="false" aria-controls="collapseExample">
+                          详细统计量
+                      </a>
+                      <button class="btn btn-primary" onclick="openVideo();">打开</button>
+                      <button class="btn btn-primary" onclick="closeVideo();">关闭</button>
+                      <div class="collapse" id="camera1_config">
                         <input type="text" id="url"/>
                         <input type="text" id="username"/>
                         <input type="text" id="password"/>
-                        <button type="button" onclick="openVideo();">打开</button>
-                        <button type="button" onclick="closeVideo();">关闭</button>
                       </div>
-                      <a class="btn btn-info" role="button" data-toggle="collapse" href="#detail_stats_1" aria-expanded="false" aria-controls="collapseExample">
-                          详细统计量
-                      </a>
-                      <div class="collapse" id="detail_stats_1">
+                      <div class="collapse" id="camera1_stats">
                         <table class="table table-bordered">
                               <thead>
                                 <tr>
@@ -240,28 +243,12 @@
                                 </tr>                  
                                </tbody>
                         </table>
-                     </div>
-                     <div class="alert alert-success alert-dismissable nofollow">
-                        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                        <h4>
-                          警告！
-                        </h4> <strong>警告！</strong> 这里是警告的内容<a rel="nofollow" href="#" class="alert-link">查看</a>
                       </div>
                   </div>
-                    <div class="col-md-4 column">
-                      <div>
-                        <input type="text" id="messageinput"/>
-                        <button type="button" onclick="openVideo();">打开</button>
-                        <button type="button" onclick="closeVideo();">关闭</button>
-                      </div>
-                     </div>
-                     <div class="col-md-4 column">
-                      <div>
-                        <input type="text" id="messageinput"/>
-                        <button type="button" onclick="openVideo();">打开</button>
-                        <button type="button" onclick="closeVideo();">关闭</button>
-                      </div>
-                    </div>
+                  <div class="col-md-4 column">
+                  </div>
+                  <div class="col-md-4 column">
+                  </div>
                   </div>
                 </div>   <!-- tab-pane" id="tab2" -->
                 <div class="tab-pane" id="tab3">

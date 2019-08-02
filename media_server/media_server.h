@@ -6,15 +6,12 @@
 typedef struct {
   GMainLoop *loop;
   volatile gboolean g_running_flag;
-  
   // oupSession *session;
   // SoupMessage *msg;
   // SoupWebsocketConnection *client;
   // GError *client_error;
-
   SoupServer *soup_server;
   SoupWebsocketConnection *server;
-
   // gboolean no_server;
   // GIOStream *raw_server;
 } AppContext;

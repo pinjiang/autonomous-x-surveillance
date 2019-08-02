@@ -282,7 +282,7 @@ int start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop)
   /* no need for synchronisation or preroll on the RTCP sink */
   g_object_set (p_appctx->rtcpsink, "async", FALSE, "sync", FALSE, NULL);
 
-  if (! p_appctx->pipeline || ! p_appctx->source || !p_appctx->depayloader || !p_appctx->parser || !p_appctx->decoder || !p_appctx->rtcpsink || !p_appctx->sink) {
+  if (!p_appctx->pipeline || !p_appctx->source || !p_appctx->depayloader || !p_appctx->parser || !p_appctx->decoder || !p_appctx->rtcpsink || !p_appctx->sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
