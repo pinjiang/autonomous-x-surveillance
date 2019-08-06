@@ -19,7 +19,6 @@
     <script type="text/javascript" src="js/plugins/bootstrap-treeview/bootstrap-treeview.js"></script>
     <script type="text/javascript" src="js/plugins/bootstrap-dialog/bootstrap-dialog.min.js"></script>
     <script type="text/javascript" src="js/customPlugin.js"></script>
-    <script type="text/javascript" src="js/salvattore.min.js"></script> 
     <script type="text/javascript" src="js/scripts.js"></script>
   </head>
   <body>
@@ -171,7 +170,7 @@
                               </tr>
                             </thead>
                             <tbody>
-                              <tr>
+                              <tr id=“table-content”>
                                 <td>
                                   <div class="custom-control custom-radio">
                                     <input type="radio" class="custom-control-input" id="defaultUnchecked" name="defaultExampleRadios">
@@ -183,8 +182,8 @@
                           </table>
                         </div>
                         <div class="col-md-4 column">
-                            <button type="button" onclick="openSocket();">连接后台</button>
-                            <button type="button" onclick="closeSocket();">断开后台</button>
+                            <button class="btn btn-primary" onclick="openSocket();">连接后台</button>
+                            <button class="btn btn-primary" onclick="closeSocket();">断开后台</button>
                         </div>
                   </div>
                   <div class="row clearfix" data-columns="" id="cameras">

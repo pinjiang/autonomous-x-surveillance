@@ -81,7 +81,12 @@ var tree = [
   }, 
 ];  
 
-var blocktemplate = "<div class=\"col-md-4 column\" id=\"camera_00\"> \
+var td_template = "<td> <div class=\"custom-control custom-radio\"> \
+<input type=\"radio\" class=\"custom-control-input\" id=\"defaultUnchecked\" name=\"defaultExampleRadios\"> \
+<label class=\"custom-control-label\" for=\"defaultUnchecked\">Default unchecked</label> \
+</div> </td>";
+
+var block_template = "<div class=\"col-md-4 column\" id=\"camera_00\"> \
 <a class=\"btn btn-info\" role=\"button\" data-toggle=\"collapse\" href=\"#config_00\" aria-expanded=\"false\" aria-controls=\"collapseExample\"> \
     详细配置 \
 </a> \
@@ -91,10 +96,10 @@ var blocktemplate = "<div class=\"col-md-4 column\" id=\"camera_00\"> \
 <button class=\"btn btn-primary\" onclick=\"openVideo(this);\">打开</button> \
 <button class=\"btn btn-primary\" onclick=\"closeVideo(this);\">关闭</button> \
 <div class=\"collapse\" id=\"config_00\"> \
-  <input type=\"text\" id=\"name_00\"/> \
-  <input type=\"text\" id=\"url_00\"/> \
-  <input type=\"text\" id=\"username_00\"/> \
-  <input type=\"text\" id=\"password_00\"/> \
+  <p><label>名称:</label> <input type=\"text\" id=\"name_00\"/> </p>\
+  <p>网络地址:</label> <input type=\"text\" id=\"url_00\"/> </p>\
+  <p>用户名:</label> <input type=\"text\" id=\"username_00\"/> </p>\
+  <p>密码:</label> <input type=\"text\" id=\"password_00\"/> </p>\
 </div> \
 <div class=\"collapse\" id=\"stats_00\"> \
   <table class=\"table table-bordered\"> \
@@ -193,7 +198,7 @@ function openVideo(obj) {
   var element = console.log($(obj).parent());
   var id = $(obj).parent().attr("id").split("_")[1];
 
-  console.log(id);
+  // console.log(id);
   // console.log("name_" + id);
   // console.log($("#name_" + id));
   // console.log($("#url_" + id));
@@ -218,7 +223,7 @@ function openVideo(obj) {
 /**
  * ask background gstreamer media server to close a video
  */
-function closeVideo() {
+function closeVideo(obj) {
   var element = console.log($(obj).parent());
   var id = $(obj).parent().attr("id").split("_")[1];
 
@@ -226,7 +231,8 @@ function closeVideo() {
 	var jsonObj = {
     "type"   : "stop",
     "name"   : name,
-	};
+  };
+  console.log(jsonObj);
   webSocket.send(JSON.stringify(jsonObj));
 }
  
@@ -272,9 +278,6 @@ function nextElement(element) {
 function updateElement(element, item) {
   var id = $(element).attr("id").split("_")[1];
 
-  console.log(id);
-  console.log(item);
-
   $("#name_" + id, element).val(item.text);
   $("#url_" + id,  element).val(item.url);
   $("#username_" + id, element).val(item.user_id);
@@ -282,11 +285,22 @@ function updateElement(element, item) {
 }
 
 function appendElement(item) {
-  var newElement = $.parseHTML(blocktemplate);
+  var newElement = $.parseHTML(block_template);
   nextElement(newElement);
   updateElement(newElement, item);
 
   $("#cameras").append(newElement);
+}
+
+function updateTd() {
+
+}
+
+function appendTable(item) {
+  var new_td = $.parseHTML(td_template);
+  updateTd(new_td, item);
+  console.log("append once");
+  $("#table-content").append(new_td);
 }
 
 $(function(){
@@ -322,9 +336,13 @@ $(function(){
       }); 
       
       // 更新
-      // console.log(getTree()[0]);
+      jQuery.each(getTree(), (index, item) => {
+           console.log(index, item);
+           appendTable(item);
+      });
+
+      // 更新
       jQuery.each(getTree()[0].nodes, (index, item) => {
-          console.log(index, item);
           appendElement(item);
       });
   }
