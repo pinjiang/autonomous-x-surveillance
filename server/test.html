@@ -13,13 +13,14 @@
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="js/plugins/bootstrap-treeview/bootstrap-treeview.min.css">
     <link rel="stylesheet" type="text/css" href="js/plugins/bootstrap-dialog/bootstrap-dialog.min.css">
-    <link href="css/style.css" rel="stylesheet">
+    <!-- <link href="css/style.css" rel="stylesheet"> -->
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script type="text/javascript" src="js/plugins/bootstrap-treeview/bootstrap-treeview.js"></script>
     <script type="text/javascript" src="js/plugins/bootstrap-dialog/bootstrap-dialog.min.js"></script>
     <script type="text/javascript" src="js/customPlugin.js"></script>
-    <script src="js/scripts.js"></script>
+    <script type="text/javascript" src="js/salvattore.min.js"></script> 
+    <script type="text/javascript" src="js/scripts.js"></script>
   </head>
   <body>
       <div class="container-fluid">
@@ -71,23 +72,28 @@
                                     <span class="input-group-addon" >名称:</span>         
                                     <input id="editName" type="text"  class="form-control" />
                                   </div>
-                                  <div class="input-group margin-t-5">
+                                  <div class="input-group margin-t-5" class="hidden" id="editTypeDiv">
                                       <span class="input-group-addon">类型:</span>
                                       <input id="editType" type="text" class="form-control" />
                                   </div>
-                                  <div class="input-group margin-t-5">
+                            
+                                  <!--摄像头配置 start -->
+                                  <div class="input-group margin-t-5" class="hidden" id="editUrlDiv">
                                       <span class="input-group-addon">网络地址:</span>
                                       <input id="editUrl" type="text" class="form-control" />
                                   </div>
-                                  <div class="input-group margin-t-5">
+                                  <div class="input-group margin-t-5" class="hidden" id="editUsernameDiv">
                                       <span class="input-group-addon">用户名:</span>
                                       <input id="editUsername" type="text" class="form-control" />
                                   </div>
-                                  <div class="input-group margin-t-5">
+                                  <div class="input-group margin-t-5" class="hidden" id="editPasswordDiv">
                                       <span class="input-group-addon">密码:</span>
                                       <input id="editPassword" type="text" class="form-control" />
                                   </div>
+                                  <!--摄像头配置 stop -->
+
                                 </div>
+
                                 <div style="margin-top: 10px;">
                                   <input id="Edit" class="btn btn-primary" type="button" value="确定" />
                                   <input id="Edit_cancel" class="btn btn-default" type="button" style="margin-left:80px;display:none;" value="取消" />
@@ -181,74 +187,7 @@
                             <button type="button" onclick="closeSocket();">断开后台</button>
                         </div>
                   </div>
-                  <div class="row clearfix">
-                  <div class="col-md-4 column text-center" id="camera1">
-                      <a class="btn btn-info" role="button" data-toggle="collapse" href="#camera1_config" aria-expanded="false" aria-controls="collapseExample">
-                            详细配置
-                      </a>
-                      <a class="btn btn-info" role="button" data-toggle="collapse" href="#camera1_stats" aria-expanded="false" aria-controls="collapseExample">
-                          详细统计量
-                      </a>
-                      <button class="btn btn-primary" onclick="openVideo();">打开</button>
-                      <button class="btn btn-primary" onclick="closeVideo();">关闭</button>
-                      <div class="collapse" id="camera1_config">
-                        <input type="text" id="url"/>
-                        <input type="text" id="username"/>
-                        <input type="text" id="password"/>
-                      </div>
-                      <div class="collapse" id="camera1_stats">
-                        <table class="table table-bordered">
-                              <thead>
-                                <tr>
-                                  <th>字段</th>
-                                  <th>数值</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <th scope="row" id="codecs_encryption">codecs/encryption</th>
-                                  <td id="codecs_encryption"></td>
-                                </tr>
-                                <tr>
-                                  <th scope="row" id="frameHeightWidthReceived">frame resolution</th>
-                                  <td id="frameHeightWidthReceived_1"></td>
-                                </tr>
-                                <tr>
-                                  <th scope="row" id="frameRateOutput">frame rate(fps)</th>
-                                  <td id="frameRateOutput"></td>
-                                </tr>
-                                <tr>
-                                  <th scope="row" id="bytesReceived">bytes received(second/total)</th>
-                                  <td id="bytesReceived"></td>
-                                </tr>
-                                <tr>
-                                  <th scope="row" id="packetsReceivedLost">packets lost(%)</th>
-                                  <td id="packetsReceivedLost"></td>
-                                </tr>
-                                <tr>
-                                  <th scope="row" id="latency">latency(ms)</th>
-                                  <td id="latency"></td>
-                                </tr>
-                                <tr>
-                                  <th scope="row" id="jitterbufferms">jitter buffer(ms)</th>
-                                  <td id="jitterbufferms"></td>
-                                </tr>
-                                 <tr>
-                                  <th scope="row" id="availreceivebw">availreceivebw(bps)</th>
-                                  <td id="availreceivebw"></td>
-                                </tr>         
-                                <tr>
-                                  <th scope="row" id="nackplifir">nackplifir(nac/pli/fir)</th>
-                                  <td id="nackplifir"></td>
-                                </tr>                  
-                               </tbody>
-                        </table>
-                      </div>
-                  </div>
-                  <div class="col-md-4 column">
-                  </div>
-                  <div class="col-md-4 column">
-                  </div>
+                  <div class="row clearfix" data-columns="" id="cameras">
                   </div>
                 </div>   <!-- tab-pane" id="tab2" -->
                 <div class="tab-pane" id="tab3">

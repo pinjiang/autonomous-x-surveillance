@@ -11,6 +11,6 @@ typedef struct {
 
 int start_pipeline(RTSPServerInfo *, GMainLoop *);
 
-void clean_up(RtspPipelineBundle *p_appctx);
+void clean_up();
 
 #endif

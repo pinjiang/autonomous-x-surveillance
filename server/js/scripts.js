@@ -1,11 +1,52 @@
+var current_id = 0; // incremented id for tab2 
+
 var url = "ws://localhost:20000/"
 var webSocket;
-var messages = document.getElementById("messages");
 
 var tree = [
   {
+    text: "推土机",
+    id:"3",
+    type : "machinery",
+    nodes: [
+      {
+        text   : "前视",
+        type   : "camera",
+        url    : "http://122.112.211.178:18554/test",
+        user_id: "",
+        user_pw: ""
+      },
+      {
+        text   : "左视",
+        type   : "camera",
+        url    : "http://122.112.211.178:18554/test",
+        user_id: "",
+        user_pw: ""
+      },
+      {
+        text   : "右视",
+        type   : "camera",
+        url    : "http://122.112.211.178:18554/test",
+        user_id: "",
+        user_pw: ""
+      },
+      {
+        text   : "后视",
+        type   : "camera",
+        url    : "http://122.112.211.178:18554/test",
+        user_id: "",
+        user_pw: ""
+      }
+    ]
+  },
+  {
+    text : "轮胎吊",
+    id   : "2",
+    type : "machinery"
+  }, 
+  {
     text : "挖机",
-    id   : "1",
+    id   : "3",
     type : "machinery",
     nodes: [
       {
@@ -37,18 +78,69 @@ var tree = [
         user_pw: ""
       }
     ]
-  },
-  {
-    text: "轮胎吊",
-    id:"2",
-    type : "machinery"
-  }, 
-  {
-    text: "推土机",
-    id:"3",
-    type : "machinery"
   }, 
 ];  
+
+var blocktemplate = "<div class=\"col-md-4 column\" id=\"camera_00\"> \
+<a class=\"btn btn-info\" role=\"button\" data-toggle=\"collapse\" href=\"#config_00\" aria-expanded=\"false\" aria-controls=\"collapseExample\"> \
+    详细配置 \
+</a> \
+<a class=\"btn btn-info\" role=\"button\" data-toggle=\"collapse\" href=\"#stats_00\" aria-expanded=\"false\" aria-controls=\"collapseExample\"> \
+    详细统计量 \
+</a> \
+<button class=\"btn btn-primary\" onclick=\"openVideo(this);\">打开</button> \
+<button class=\"btn btn-primary\" onclick=\"closeVideo(this);\">关闭</button> \
+<div class=\"collapse\" id=\"config_00\"> \
+  <input type=\"text\" id=\"name_00\"/> \
+  <input type=\"text\" id=\"url_00\"/> \
+  <input type=\"text\" id=\"username_00\"/> \
+  <input type=\"text\" id=\"password_00\"/> \
+</div> \
+<div class=\"collapse\" id=\"stats_00\"> \
+  <table class=\"table table-bordered\"> \
+        <thead> \
+          <tr> \
+            <th>字段</th> \
+            <th>数值</th> \
+          </tr> \
+        </thead> \
+        <tbody> \
+          <tr> \
+            <th scope=\"row\" id=\"codecs_encryption\">codecs/encryption</th> \
+            <td id=\"codecs_encryption\"></td> \
+          </tr> \
+          <tr> \
+            <th scope=\"row\" id=\"frameHeightWidthReceived\">frame resolution</th> \
+            <td id=\"frameHeightWidthReceived_1\"></td> \
+          </tr> \
+          <tr>  \
+            <th scope=\"row\" id=\"frameRateOutput\">frame rate(fps)</th> \
+            <td id=\"frameRateOutput\"></td> \
+          </tr> \
+          <tr>  \
+            <th scope=\"row\" id=\"bytesReceived\">bytes received(second/total)</th> \
+            <td id=\"bytesReceived\"></td> \
+          </tr> \
+          <tr>  \
+            <th scope=\"row\" id=\"packetsReceivedLost\">packets lost(%)</th> \
+            <td id=\"packetsReceivedLost\"></td> \
+          </tr> \
+          <tr>  \
+            <th scope=\"row\" id=\"latency\">latency(ms)</th> \
+            <td id=\"latency\"></td> \
+          </tr> \
+          <tr>  \
+            <th scope=\"row\" id=\"jitterbufferms\">jitter buffer(ms)</th> \
+            <td id=\"jitterbufferms\"></td> \
+          </tr> \
+           <tr> \
+            <th scope=\"row\" id=\"availreceivebw\">availreceivebw(bps)</th> \
+            <td id=\"availreceivebw\"></td> \
+          </tr> \
+          </tbody> \
+  </table> \
+</div> \
+</div>";
 
 //获取树数据
 function getTree(){
@@ -88,25 +180,29 @@ function openSocket(){
   webSocket.onclose = function(event){
     writeResponse("Connection closed");
   };
-}
+}          
           
-/**
- * Sends the value of the text input to the server
- */
-function send(){
-  var text = document.getElementById("messageinput").value;
-  webSocket.send(text);
-}
-           
 function closeSocket(){
   webSocket.close();
 }
 
-function openVideo(id) {
-  var name = document.getElementById("name").value;
-  var url = document.getElementById("url").value;
-  var user_id = document.getElementById("username").value;
-  var user_pw = document.getElementById("password").value;
+/**
+ * ask background gstreamer media server to open a video
+ */
+function openVideo(obj) {
+  var element = console.log($(obj).parent());
+  var id = $(obj).parent().attr("id").split("_")[1];
+
+  console.log(id);
+  // console.log("name_" + id);
+  // console.log($("#name_" + id));
+  // console.log($("#url_" + id));
+  // console.log($("#username_" + id));
+  // console.log($("#password_" + id));
+  var name = $("#name_" + id).val();
+  var url  = $("#url_" + id).val();
+  var user_id = $("#username_" + id).val();
+  var user_pw = $("#password_" + id).val();
 
 	var jsonObj = {
     "type"   : "play",
@@ -114,40 +210,83 @@ function openVideo(id) {
     "url"    : url,
     "user_id": user_id,
     "user_pw": user_pw,
-	};
+  };
+  console.log(jsonObj);
   webSocket.send(JSON.stringify(jsonObj));
 }
 
+/**
+ * ask background gstreamer media server to close a video
+ */
 function closeVideo() {
-  var name = document.getElementById("name").value;
+  var element = console.log($(obj).parent());
+  var id = $(obj).parent().attr("id").split("_")[1];
 
+  var name = $("#name_" + id).val();
 	var jsonObj = {
     "type"   : "stop",
     "name"   : name,
 	};
-	webSocket.send(JSON.stringify(jsonObj));
+  webSocket.send(JSON.stringify(jsonObj));
 }
  
 function writeResponse(text){
   messages.innerHTML += "<br/>" + text;
 }
 
-/* $('#myTab a').click(function (e) {
-  e.preventDefault()
-  $(this).tab('show')
-}) */
+function nextElement(element) {
+  // var newElement = element.clone();
+  var id = current_id + 1;
+  current_id = id;
 
-function addCameraBlock() {
-  var iDiv = document.createElement('div');
-  iDiv.id = 'block';
-  iDiv.className = 'block';
-  document.body.appendChild(iDiv);
+  if(id<10) id="0"+id;
 
-  var iiDiv = document.createElement('div');
-  iiDiv.className = 'block-2';
+  $(element).attr("id", $(element).attr("id").split("_")[0] + "_" + id);
+  // var field = $('input', $(element)).attr("id");
+  // $('input', $(element)).attr("id", field.split("_")[0]+"_"+id);
 
-  var s = document.getElementById('block');
-  s.appendChild(iiDiv);
+  $('input', $(element)).each(function(i, obj) {
+    $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
+    //test
+  });
+
+  $('a', $(element)).each(function(i, obj) {
+    $(obj).attr("href", $(obj).attr("href").split("_")[0]+"_"+id);
+    //test
+  });
+
+  $('.collapse', $(element)).each(function(i, obj) {
+    $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
+    //test
+  });
+
+  /* var field = $('.collapse', $(element)).attr("id");
+  console.log(field);
+  $('a', $(element)).attr("href", field.split("_")[0]+"_"+id);
+  $('.collapse', $(element)).attr("id", field.split("_")[0]+"_"+id); */
+  /* TBD Bug: stats is renamed to config */
+
+  // $("#cameras").append(newElement);
+}
+
+function updateElement(element, item) {
+  var id = $(element).attr("id").split("_")[1];
+
+  console.log(id);
+  console.log(item);
+
+  $("#name_" + id, element).val(item.text);
+  $("#url_" + id,  element).val(item.url);
+  $("#username_" + id, element).val(item.user_id);
+  $("#password_" + id, element).val(item.user_pw);
+}
+
+function appendElement(item) {
+  var newElement = $.parseHTML(blocktemplate);
+  nextElement(newElement);
+  updateElement(newElement, item);
+
+  $("#cameras").append(newElement);
 }
 
 $(function(){
@@ -161,7 +300,18 @@ $(function(){
          data: getTree(),
          levels: 1,
          onNodeSelected:function(event, node){
-           if( node.type == "camera") {
+           if( node.type == "machinery") {
+             // To hide it
+             $("#editUrlDiv").addClass('hidden');
+             $("#editUsernameDiv").addClass('hidden');
+             $("#editPasswordDiv").addClass('hidden');
+           } 
+           else if( node.type == "camera") {
+             // To show it
+             $("#editUrlDiv").removeClass('hidden');
+             $("#editUsernameDiv").removeClass('hidden');
+             $("#editPasswordDiv").removeClass('hidden');
+
              $('#editName').val(node.text);
              $('#editUrl').val(node.url);
              $('#editUsername').val(node.user_id);
@@ -171,18 +321,12 @@ $(function(){
          showCheckbox:false//是否显示多选
       }); 
       
-
       // 更新
-      var iDiv = document.createElement('div');
-      iDiv.id = 'block';
-      iDiv.className = 'block';
-      document.body.appendChild(iDiv);
-    
-      var iiDiv = document.createElement('div');
-      iiDiv.className = 'block-2';
-    
-      var s = document.getElementById('block');
-      s.appendChild(iiDiv);
+      // console.log(getTree()[0]);
+      jQuery.each(getTree()[0].nodes, (index, item) => {
+          console.log(index, item);
+          appendElement(item);
+      });
   }
   
   //事件注册
@@ -191,12 +335,12 @@ $(function(){
       //保存-新增
       $("#Save").click(function () {
           $('#addOperation-dialog').modal('hide')
-                                //静态添加节点
-                                var parentNode = $('#left-tree').treeview('getSelected');
-                                var node = {
-                                  text: $('#addName').val()
-                                };
-                                $('#left-tree').treeview('addNode', [node, parentNode]);
+                    //静态添加节点
+                    var parentNode = $('#left-tree').treeview('getSelected');
+                    var node = {
+                        text: $('#addName').val()
+                    };
+                    $('#left-tree').treeview('addNode', [node, parentNode]);
                 });
       }
        //保存-编辑
@@ -251,6 +395,7 @@ $(function(){
       $("#btnMove").click(function(){
         $.showMsgText('更新中...');
       });
+
       /*-----页面pannel内容区高度自适应 start-----*/
       $(window).resize(function () {
         setCenterHeight();
@@ -264,3 +409,13 @@ $(function(){
       /*-----页面pannel内容区高度自适应 end-----*/
 });
 
+
+
+var messages = document.getElementById("messages");
+/**
+ * Sends the value of the text input to the server
+ */
+function send(){
+  var text = document.getElementById("messageinput").value;
+  webSocket.send(text);
+}
