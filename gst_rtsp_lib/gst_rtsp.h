@@ -9,7 +9,19 @@ typedef struct {
    const char *user_pwd;
 }RTSPServerInfo;
 
-int start_pipeline(RTSPServerInfo *, GMainLoop *);
+typedef struct myDataTag {
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *depayloader;
+  GstElement *rtcpsink;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *sink;
+} RtspPipelineBundle;
+/*********************************************/
+
+RtspPipelineBundle * start_pipeline(RTSPServerInfo *, GMainLoop *);
+void clean_up(RtspPipelineBundle *p_appctx);
 
 void clean_up();
 

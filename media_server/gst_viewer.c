@@ -452,6 +452,7 @@ int main (int argc, char *argv[])
   } else { /* For everything else, set to back to default*/
     g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_MASK, g_log_default_handler, NULL);
   }
+
   
   if (!opt_config_file ) {
     g_printerr ("--config is a required argument\n");

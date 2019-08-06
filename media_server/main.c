@@ -23,11 +23,11 @@ typedef struct {
 static AppOption  g_opt = {NULL, 20000, FALSE, NULL, NULL};
 
 static GOptionEntry entries[] = {
-  { "verbose", 'v', 0, G_OPTION_ARG_STRING,   &g_opt.verbose,      "Be verbose", NULL },
-  { "disable-ssl", 0, 0, G_OPTION_ARG_NONE,   &g_opt.disable_ssl,  "Disable ssl", NULL },
-  { "cert-file", 'c', 0, G_OPTION_ARG_STRING, &g_opt.tls_cert_file,"Use FILE as the TLS certificate file", "FILE" },
-  { "key-file", 'k', 0,  G_OPTION_ARG_STRING, &g_opt.tls_key_file, "Use FILE as the TLS private key file", "FILE" },
-  { "port", 'p', 0,      G_OPTION_ARG_INT,    &g_opt.listen_port,  "Port to listen on", NULL },
+  { "verbose",      'v', 0, G_OPTION_ARG_STRING, &g_opt.verbose,      "Be verbose", NULL },
+  { "disable-ssl",  0,   0, G_OPTION_ARG_NONE,   &g_opt.disable_ssl,  "Disable ssl", NULL },
+  { "cert-file",    'c', 0, G_OPTION_ARG_STRING, &g_opt.tls_cert_file,"Use FILE as the TLS certificate file", "FILE" },
+  { "key-file",     'k', 0, G_OPTION_ARG_STRING, &g_opt.tls_key_file, "Use FILE as the TLS private key file", "FILE" },
+  { "port",         'p', 0, G_OPTION_ARG_INT,    &g_opt.listen_port,  "Port to listen on", NULL },
   { NULL }
 };
 

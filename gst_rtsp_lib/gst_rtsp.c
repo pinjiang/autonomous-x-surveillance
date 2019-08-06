@@ -3,22 +3,57 @@
 
 #include "gst_rtsp.h"
 
-typedef struct myDataTag {
-  GstElement *pipeline;
-  GstElement *source;
-  GstElement *depayloader;
-  GstElement *rtcpsink;
-  GstElement *parser;
-  GstElement *decoder;
-  GstElement *sink;
-} RtspPipelineBundle;
-
 /* the destination machine to send RTCP to. This is the address of the sender and
  * is used to send back the RTCP reports of this receiver. If the data is sent
  * from another machine, change this address. */
 #define DEST_HOST "127.0.0.1"
-
 static guint g_ssrc = 0; /* copy of the receiver ssrc */
+//RTCP 控制参数获取
+#define RTCP_MAX_NUM		22
+#define RTCP_LEY_LEN_MAX	64
+typedef enum {
+	eInvalid = -1, eBollean, eInt, eUint, eInt64, eUint64
+}RtcpValueType;
+typedef union {
+	gboolean	value_bool;
+	gint 		value_int;
+	guint 		value_uint;
+	gint64		value_int64;
+	guint64		value_uint64;
+}RtcpValue;
+typedef struct {
+	gchar 			key[RTCP_LEY_LEN_MAX];
+	RtcpValueType	value_type;	//数值类型
+	RtcpValue		value;		//数值结果
+	gdouble			fk;			//数值系数
+}RtcpParseInfo;
+//外部使用参数
+RtcpParseInfo g_rtcp_parameter[RTCP_MAX_NUM] = {
+		{"ssrc",			 	eUint, 0, 1.0},
+		{"received-bye",		eBollean, 0, 1.0},
+		{"clock-rate", 			eInt, 0, 1.0},
+		{"octets-received", 	eUint64, 0, 1.0},
+		{"packets-received", 	eUint64, 0, 1.0},
+		{"bitrate", 			eUint64, 0, 1.0},
+		{"packets-lost", 		eInt, 0, 1.0},
+		{"jitter", 				eUint, 0, 1.0},
+		{"sent-pli-count", 		eUint, 0, 1.0},
+		{"recv-pli-count", 		eUint, 0, 1.0},
+		{"sent-fir-count", 		eUint, 0, 1.0},
+		{"recv-fir-count", 		eUint, 0, 1.0},
+
+		{"sr-ntptime", 			eUint, 0, 1.0},
+		{"sr-rtptime",			eUint, 0, 1.0},
+		{"sr-octet-count",		eUint, 0, 1.0},
+		{"sr-packet-count",		eUint, 0, 1.0},
+
+		{"sent-rb-fractionlost",eUint, 0, 1.0},
+		{"sent-rb-packetslost",	eInt, 0, 1.0},
+		{"sent-rb-exthighestseq",eUint, 0, 1.0},
+		{"sent-rb-jitter",		eUint, 0, 1.0},
+		{"sent-rb-lsr",			eUint, 0, 1.0},
+		{"sent-rb-dlsr",		eUint, 0, 1.0}
+};
 
 /*********************************************************************************************
  * Description: Print the stats of a source                                                  *
@@ -31,9 +66,37 @@ static void print_source_stats (GObject * source) {
   gchar *str;
 
   g_return_if_fail (source != NULL);
+  gint i = 0;
+  const GValue *value = NULL;
 
   /* get the source stats */
   g_object_get (source, "stats", &stats, NULL);
+
+  for (i = 0; i < RTCP_MAX_NUM; i++) {
+	  value = gst_structure_get_value(stats, g_rtcp_parameter[i].key);
+	  switch (g_rtcp_parameter[i].value_type) {
+		  case eBollean: {
+			  g_rtcp_parameter[i].value.value_bool = g_value_get_boolean(value);
+			  g_print ("%s: %d\n", g_rtcp_parameter[i].key, g_rtcp_parameter[i].value.value_bool);
+		  } break;
+		  case eInt: {
+			  g_rtcp_parameter[i].value.value_int = g_value_get_int(value);
+			  g_print ("%s: %d\n", g_rtcp_parameter[i].key, g_rtcp_parameter[i].value.value_int);
+		  } break;
+		  case eUint: {
+			  g_rtcp_parameter[i].value.value_uint = g_value_get_uint(value);
+			  g_print ("%s: %u\n", g_rtcp_parameter[i].key, g_rtcp_parameter[i].value.value_uint);
+		  } break;
+		  case eInt64: {
+			  g_rtcp_parameter[i].value.value_int64 = g_value_get_int64(value);
+			  g_print ("%s: %ld\n", g_rtcp_parameter[i].key, g_rtcp_parameter[i].value.value_int64);
+		  } break;
+		  case eUint64: {
+			  g_rtcp_parameter[i].value.value_uint64 = g_value_get_uint64(value);
+			  g_print ("%s: %lu\n", g_rtcp_parameter[i].key, g_rtcp_parameter[i].value.value_uint64);
+		  } break;
+	  }
+	 }
 
   /* simply dump the stats structure */
   str = gst_structure_to_string (stats);
@@ -42,6 +105,7 @@ static void print_source_stats (GObject * source) {
   gst_structure_free (stats);
   g_free (str);
 }
+
 
 /*********************************************************************************************
  * Description:                                                                              *
@@ -260,13 +324,13 @@ static gboolean bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
  * Input :                                                                                   *
  * Return:                                                                                   *
  *********************************************************************************************/
-int start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop)
+RtspPipelineBundle *start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop)
 {
   // GMainLoop *loop;
   GstBus *bus;
   gst_init(NULL, NULL);
 
-  RtspPipelineBundle * p_appctx = g_malloc0(sizeof(RtspPipelineBundle));
+  RtspPipelineBundle *p_appctx = g_malloc0(sizeof(RtspPipelineBundle));
 
   p_appctx->pipeline = gst_pipeline_new ("network-player");
   p_appctx->source = gst_element_factory_make ("rtspsrc","source");
@@ -284,7 +348,7 @@ int start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop)
 
   if (!p_appctx->pipeline || !p_appctx->source || !p_appctx->depayloader || !p_appctx->parser || !p_appctx->decoder || !p_appctx->rtcpsink || !p_appctx->sink) {
     g_printerr ("One element could not be created. Exiting.\n");
-    return -1;
+    return NULL;
   }
 
   g_object_set(G_OBJECT(p_appctx->source), "location", p_info->location, NULL);
@@ -325,5 +389,5 @@ int start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop)
 
   // g_print ("Deleting pipeline\n");
   // gst_object_unref (GST_OBJECT (app.pipeline));
-  return 0;
+  return p_appctx;
 }
