@@ -161,11 +161,10 @@ SoupServer* start_server(const int port, const char *tls_cert_file, const char *
 								   websocket_callback,
 								   app, NULL);
 	//创建定时任务去发送RTCP的数据
-//	GSource *source = g_timeout_source_new (1500);//1.5s
-//	guint sourceID = g_source_attach (source, NULL);
-//	g_printf ("source_get_ID:%d\n", sourceID);
-//	g_source_set_callback (source, send_rscp_callback, NULL, NULL);
-
+	GSource *source = g_timeout_source_new (1500);
+	guint sourceID = g_source_attach (source, NULL);
+	glib_log_info("source_get_ID:%d\n", sourceID);
+	g_source_set_callback (source, send_rtcp_callback, app, NULL);
 
 	uris = soup_server_get_uris (server);
 	for (u = uris; u; u = u->next) {
@@ -210,75 +209,80 @@ void stop_server(SoupServer* server)
  * Input :                                                                                   *
  * Return:                                                                                   *
  *********************************************************************************************/
-
-
 static gboolean send_rtcp_callback (gpointer user_data)
 {
-//	gint i = 0;
-//	gint ret = eMEDIA_SERVER_SUCCESS;
-//	JsonGenerator *gen = NULL;
-//	JsonNode 	  *root= NULL;
-//
-//	/* 1.创建JSON */
-//	JsonBuilder *builder = json_builder_new ();
-//	if (NULL == builder) {
-//		glib_log_warning ("Build  JsonBuilder err");
-//		return eMSG_JSON_REPLY_BUILD_ERR;
-//	}
-//	json_builder_begin_object(builder);
-//	json_builder_set_member_name(builder, "type");
-//	json_builder_add_string_value(builder, "report");
-//	json_builder_set_member_name(builder, "name");
-//	json_builder_add_string_value(builder, "front");
-//
-//	for (i = 0; i < RTCP_MAX_NUM; i++) {
-//		json_builder_set_member_name(builder, g_rtcp_parameter[i].key);
-//		switch (g_rtcp_parameter[i].value_type) {
-//		 case eBollean: {
-//			 json_builder_add_boolean_value (builder, g_rtcp_parameter[i].value.value_bool);
-//		  } break;
-//		  case eInt: {
-//			  g_print ("%s: %d\n", g_rtcp_parameter[i].key, g_value_get_int(value));
-//
-//		  } break;
-//		  case eUint: {
-//			  g_print ("%s: %u\n", g_rtcp_parameter[i].key, g_value_get_uint(value));
-//		  } break;
-//		  case eInt64: {
-//			  g_print ("%s: %ld\n", g_rtcp_parameter[i].key, g_value_get_int64(value));
-//		  } break;
-//		  case eUint64: {
-//			  g_print ("%s: %lu\n", g_rtcp_parameter[i].key, g_value_get_uint64(value));
-//		  } break;
-//		}
-//
-//		json_builder_add_string_value(builder, g_rtcp_parameter[i].key);
-//	}
-//
-//	json_builder_end_object(builder);
-//
-//	/* 2.将JSON转化为字符串 */
-//	gen = json_generator_new();
-//	if (NULL == gen) {
-//		g_object_unref (builder);
-//		return eMSG_JSON_GENERATOR_NEW_ERR;
-//	}
-//	root = json_builder_get_root(builder);
-//	if (NULL == root) {
-//		g_object_unref (gen);
-//		g_object_unref (builder);
-//		return eMSG_JSON_BUILD_GET_ROOT_ERR;
-//	}
-//	json_generator_set_root(gen, root);
-//	*reply = json_generator_to_data(gen, NULL);
-//	if (NULL == *reply) {
-//		ret = eMSG_JSON_GENERATOR_TO_DATA_ERR;
-//	}
-//
-//	/* 3.清理资源 */
-//	json_node_free (root);
-//	g_object_unref (gen);
-//	g_object_unref (builder);
+	glib_log_info("send_rtcp_callback");
+	if (NULL == user_data) {
+		glib_log_info("send_rtcp_callback data is NULL");
+		return TRUE;
+	}
+	gint i = 0;
+	gint ret = eMEDIA_SERVER_SUCCESS;
+	JsonGenerator *gen = NULL;
+	JsonNode 	  *root= NULL;
+	AppContext 	*app = user_data;
+
+	if (NULL == app->server) {
+		glib_log_info("send_rtcp_callback app->server is NULL");
+		return TRUE;
+	}
+	/* 1.创建JSON */
+	JsonBuilder *builder = json_builder_new ();
+	if (NULL == builder) {
+		glib_log_warning ("Build  JsonBuilder err");
+		return TRUE;
+	}
+	json_builder_begin_object(builder);
+	json_builder_set_member_name(builder, "type");
+	json_builder_add_string_value(builder, "report");
+	json_builder_set_member_name(builder, "name");
+	json_builder_add_string_value(builder, "front");
+
+	for (i = 0; i < RTCP_MAX_NUM; i++) {
+		json_builder_set_member_name(builder, g_rtcp_parameter[i].key);
+		switch (g_rtcp_parameter[i].value_type) {
+		 case eBollean: {
+			 json_builder_add_boolean_value(builder, g_rtcp_parameter[i].value.value_bool);
+		  } break;
+		  case eInt: {
+			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_int);
+		  } break;
+		  case eUint: {
+			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_uint);
+		  } break;
+		  case eInt64: {
+			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_int64);
+		  } break;
+		  case eUint64: {
+			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_uint64);
+		  } break;
+		}
+	}
+	json_builder_end_object(builder);
+
+	/* 2.将JSON转化为字符串 */
+	gen = json_generator_new();
+	if (NULL == gen) {
+		g_object_unref (builder);
+		return TRUE;
+	}
+	root = json_builder_get_root(builder);
+	if (NULL == root) {
+		g_object_unref (gen);
+		g_object_unref (builder);
+		return TRUE;
+	}
+	json_generator_set_root(gen, root);
+	gchar *reply = json_generator_to_data(gen, NULL);
+	if (NULL != reply) {
+		soup_websocket_connection_send_text(app->server, reply);
+		g_free(reply);
+	}
+
+	/* 3.清理资源 */
+	json_node_free (root);
+	g_object_unref (gen);
+	g_object_unref (builder);
 
 	return TRUE;
 }

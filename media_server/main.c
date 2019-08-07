@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
   GOptionContext *opts;
   GError *error = NULL;
-  AppContext app;
+  AppContext app = {0};
 
   opts = g_option_context_new (NULL);
   g_option_context_add_main_entries (opts, entries, NULL);
