@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<head>
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">  
+	<meta charset="utf-8">  
+    <title></title>
+	<!--时间css start-->
+	<link href="common/css/bootstrap-datetimepicker.css" rel="stylesheet">
+	<link href="common/css/bootstrap-select.min.css" rel="stylesheet">
+	<link href="common/css/font-awesome.min.css" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" media="screen" href="common/css/bootstrap.min.css" />
+	<!--时间css end-->
+	<script src="common/js/jquery-2.1.1.min.js"></script>
+	<script src="common/js/bootstrap.min.js"></script>
+	<!--时间js start-->
+	<script src="common/js/moment-with-locales.js"></script>
+	<script src="common/js/bootstrap-datetimepicker.js"></script>
+	<script src="common/js/bootstrap-select.min.js"></script>
+	<!--时间js end-->
+	<script src="common/js/echarts.min.js"></script>
+	<script src="common/js/line_gauge_common.js"></script>
+    
+</head>
+<body>
+	<h2 class="text-center"></h2>
+	<div class="col-lg-2">
+		<select id="PageName" class="selectpicker form-control">
+		</select>
+	</div>
+	<div class="col-lg-4">
+		<select id="DataList"  class="selectpicker form-control" multiple data-max-options="5">
+		</select>
+	</div>
+	<div class="col-lg-1">
+			<a href="line_gauge.html">实时监测</a>
+	</div>
+	<br/>
+	<hr/>
+	<div class="container">
+			<form class="form-horizontal" role="form">
+			<div class="row">
+			<label for="TaskName" class="col-lg-1 control-label">任务名</label>
+			<div class="col-lg-2">
+				<select id="TaskName" class=" form-control">
+					
+				</select>
+			</div>
+			<label for="StartTime" class="col-lg-1 control-label">开始时间</label>
+			<div class='col-lg-3'>
+				<div class="form-group">
+					<div class='input-group' >
+						<input type='text' class="form-control" id='StartTime'/>
+						<span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+						</span>
+					</div>
+				</div>
+			</div>
+			<label for="EndTime" class="col-lg-1 control-label">结束时间</label>
+			<div class='col-lg-3'>
+				<div class="form-group">
+					<div class='input-group' >
+						<input type='text' class="form-control" id='EndTime'/>
+						<span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+						</span>
+					</div>
+				</div>
+			</div>
+			<div class="col-lg-1">
+				<button type="button" class="btn btn-primary" id="query">查询</button>	
+			</div>
+			
+	</div>
+	</form>
+	</div>
+	<hr/>
+	<div id = "pic" style="height:700px;width: 80%; margin-left: 10%; margin-top: 30px"></div>
+
+<script src="line_gauge_data.js"></script>
+<script type="text/javascript">
+//全局变量
+var pagesConfig;
+var config;
+
+var startTime;//开始时间戳
+var endTime;//结束时间戳
+var xAxis = [];//时间轴
+var score = [];//历史评分
+var data1 = [];//历史数据
+var data2 = [];
+var data3 = [];
+
+var selectedData;
+var selectedDataList;
+//加载文档完毕执行
+$(function () {
+	$(".selectpicker").selectpicker({ 
+		noneSelectedText : '请选择'//默认显示内容 
+	});
+
+	//读取配置文件并完成相关设置
+	get_config();
+	set_config();
+	get_task();
+	
+	
+	//时间选择控件
+	$('#StartTime').datetimepicker({locale: 'zh-cn'});
+	$('#EndTime').datetimepicker({locale: 'zh-cn'});
+	$('#StartTime').on("dp.change",function (e) {
+		$('#EndTime').data("DateTimePicker").minDate(e.date);
+		startTime = e.date;
+	});
+	$('#EndTime').on("dp.change",function (e) {
+		$('#StartTime').data("DateTimePicker").maxDate(e.date);
+		endTime = e.date;
+		//$('#EndTime').val(e.timeStamp);
+		//console.log(endTime);
+	});
+	
+	//PageName下拉列表改变，页面配置改变
+	$("#PageName").change(function(){
+		set_config();
+		get_task();
+	})
+
+	$('#query').click(function(){
+		//获取设置
+		selectedDataList = $("#DataList").val();
+		selectedData = new Object();
+		var dataCount = selectedDataList.length;
+
+		for(var i = 0; i < dataCount; i++){
+			selectedData[selectedDataList[i]]=[];
+		}
+		selectedData["xAxis"] = [];
+		selectedData["score"] = [];
+
+		draw_history();
+	});
+
+	
+});
+
+//读取配置文件
+function get_config(){
+	$.ajax({
+		url : "line_gauge_config.json",
+		type : "GET",
+		dataType : "json",
+		cache:false,
+		async:false,
+		success:function(data)
+		{
+			pagesConfig = data.PagesConfig;
+			$("#PageName").empty();
+			for (var i = 0; i < pagesConfig.length; i++) {
+				$("#PageName").append("<option>" + pagesConfig[i]["PageName"] + "</option>");
+			}
+		},
+		error:function(){
+			alert("配置文件加载失败")
+		}
+	});
+}
+function set_config(){
+		//获取页面配置
+		config = pagesConfig.filter(function(p){
+			return p.PageName == $("#PageName").val();//"CloudOperationMonitor"; //CloudLiveStreamingMonitor
+		});
+		//数组转对象，筛选结果转换成JS对象
+		config = JSON.parse(JSON.stringify(config[0]));
+		//console.log(config);
+		//读取配置文件标题
+		var title = config.Title;
+		$('h2').text(title);
+		//页面初始化设置
+		$("#TaskName").empty();
+		$("#StartTime").val("");
+		$("#EndTime").val("");
+		var dataList = config.DataList;
+		$("#DataList").empty();
+		for (var i = 0; i < dataList.length; i++) {
+			$("#DataList").append("<option>" + dataList[i] + "</option>");
+		}
+		$('.selectpicker').selectpicker('refresh'); 
+}
+
+
+function get_task(){
+	var listUrl = config.ListBaseUrl + config.PageName + "_list.json";
+	$.ajax({
+		url : listUrl,
+		type : "GET",
+		dataType : "json",
+		cache:false,
+		async:false,
+		success:function(data)
+		{
+			var files = data.Files;
+			//将所有文件名任务名筛选出来
+			//console.log(files);
+			var taskNameArr = [];
+			for(var i = 0,len = files.length; i < len; i++){
+				//文件名拆分，取第二个字段（任务名）
+				var taskName = files[i]["FileName"].split("_")[1];
+				//console.log(taskName);
+				taskNameArr.push(taskName);
+			}
+
+			//任务名去重
+			let result = []
+			let obj = {}
+			for (var i of taskNameArr) {
+				if (!obj[i]) {
+					result.push(i)
+					obj[i] = 1
+				}
+			}
+			//加入下拉列表
+			for (var i = 0; i < result.length; i++) {
+				$("#TaskName").append("<option>" + result[i] + "</option>");
+			}
+		},
+		error:function(){
+			alert("task文件加载失败")
+		}
+	});
+}
+
+//获取历史数据并画图显示
+function draw_history(){
+	//list文件路径
+	var listUrl = config.ListBaseUrl + config.PageName + "_list.json"; 
+	var taskName = $("#TaskName").val();
+	//console.log(listUrl);
+	var timeRange = {
+		startTime : startTime,
+		endTime : endTime
+	};
+	//console.log(timeRange);
+	get_historyFiles(listUrl,taskName,timeRange,function(result){
+		if(result.length > 0){
+			load_data(result,timeRange,selectedDataList,function(data){
+				var opt = new Object();
+				opt["selectedDataList"] = selectedDataList;
+				opt["xAxis"] = data["xAxis"];
+				opt["series"] = [];
+				for(var i = 0; i < selectedDataList.length; i++){
+					var series = new Object();
+					var dataName = selectedDataList[i];
+					series["name"] = dataName;
+					series["type"] = 'line';
+					series["data"] = data[dataName];
+					console.log(series);
+					opt["series"].push(series);
+				}
+
+				//console.log(data);
+				drawLines("pic",opt);
+			})
+		}		
+		//drawLines("pic");
+})
+}
+
+$("#PageName").change(function(){
+	set_config();
+})
+
+</script>
+<div class="navbar navbar-default navbar-bottom" style="margin-top:30px;clear:both;">
+  <div class = "container">
+  	   <p class="text-center" style="padding-top: 12px">Copyright &copy; 2019-2020 X Labs. All Rights Reserved.</p>
+  </div>
+ </div>
+
+</body>
+</html>

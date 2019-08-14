@@ -12,44 +12,10 @@
 #include <json-glib/json-glib.h>
 #include <glib/gstdio.h>
 
+
 #include "media_server.h"
 #include "utils.h"
 #include "gst_rtsp.h"
-
-enum {
-	eMEDIA_SERVER_SUCCESS	= 0,
-	eMEDIA_SERVER_FAILE		= -1,
-	eMEDIA_SERVER_INVALID	= -2,
-
-	eMSG_GET_ERR 			= -200,
-	eMSG_JSON_PARSE_ERR 	= -201,
-	eMSG_JSON_LOAD_ERR 		= -202,
-	eMSG_JSON_GET_ROOT_ERR 	= -203,
-	eMSG_JSON_GET_TYPE_ERR 	= -204,
-	eMSG_JSON_TYPE_VALUE_ERR= -205,
-	eMSG_JSON_TYPE_NOT_FIND	= -206,
-
-	eMSG_JSON_PLAY_FIND_MEMBER_ERR 	= -220,
-	eMSG_JSON_PLAY_GET_MEMBER_ERR 	= -221,
-	eMSG_JSON_PLAY_KEY_MALLOC_ERR 	= -222,
-	eMSG_JSON_PLAY_VIDEO_MALLOC_ERR = -223,
-	eMSG_JSON_PLAY_NAME_MALLOC_ERR 	= -224,
-	eMSG_JSON_PLAY_URL_MALLOC_ERR 	= -225,
-	eMSG_JSON_PLAY_HASH_INSTALL_ERR = -226,
-	eMSG_JSON_PLAY_START_VIDEO_ERR 	= -227,
-	eMSG_JSON_PLAY_KEY_ALREADY_EXIST= -228,
-
-	eMSG_JSON_STOP_FIND_MEMBER_ERR 	= -230,
-	eMSG_JSON_STOP_GET_MEMBER_ERR 	= -231,
-	eMSG_JSON_STOP_HASH_REMOVE_ERR 	= -232,
-	eMSG_JSON_STOP_HASH_FIND_ERR 	= -233,
-	eMSG_JSON_STOP_HASH_VLAUE_ERR 	= -234,
-
-	eMSG_JSON_REPLY_BUILD_ERR 		= -240,
-	eMSG_JSON_GENERATOR_NEW_ERR 	= -241,
-	eMSG_JSON_BUILD_GET_ROOT_ERR 	= -242,
-	eMSG_JSON_GENERATOR_TO_DATA_ERR = -243,
-};
 
 /*******************************************************************************************************/
 //请求消息为字符串类型
@@ -71,17 +37,42 @@ typedef enum {
 typedef struct {
 	gchar 		*name;
 	gchar 		*url;
+	gchar 		*user_id;
+	gchar 		*user_pwd;
 	VideoStatus status;
 	RtspPipelineBundle 	*pipe;
 }VideoInfo;
+//RTCP控制数据写入文件
+#define FILE_PATH_RUNTIME		"../line_gauge/data/runtime/"
+#define FILE_PATH_HISTORY		"../line_gauge/data/history/"
+#define FILE_PATH_HISTORY_LIST	"../line_gauge/data/list/"
+
+#define FILE_HISTORY_LIST_VALUE "{\"Files\":[]}"
+#define FILE_HISTORY_VALUE 		"{\"data\":[]}"
+typedef struct {
+	GString *process_name;
+	GString	*runtime_file;
+	GString	*history_file;
+	GString	*history_list_file;
+
+	GDateTime  	*time;
+	gint64		time_sec;
+
+	JsonParser	*history;	//历史数据
+	JsonArray	*history_data_array;	//历史文件数据节点
+}RtcpToFile;
+
 
 void stop_server(SoupServer* server);
 
 /*******************************************************************************************************/
+static gint init_rtcp_file(RtcpToFile *rtcp, const char *task_name);
+static gint add_rtcp_file_list(RtcpToFile *rtcp);
 //内部使用函数
 static void websocket_callback (SoupServer *server, SoupWebsocketConnection *connection,
 								const char *path, SoupClientContext *client, gpointer user_data);
 static gboolean send_rtcp_callback (gpointer user_data);
+static void hash_tab_foreach_call(gpointer key, gpointer value, gpointer user_data);
 ///解析websocket的数据
 static void on_message(SoupWebsocketConnection *conn, gint type, GBytes *message, gpointer data);
 ////websocket的字符串信息处理函数
@@ -106,9 +97,8 @@ static const MsgTexType g_msg_text_type[MSG_TEX_TYPE_MAX] = {
 		{"stop", msg_requst_type_stop},
 };
 
-
-static GHashTable *g_hash_video_info = NULL;
-
+static GHashTable *g_hash_video_info = NULL;	//HashMap存储视频信息
+static RtcpToFile g_rtcp_to_file = {0};			//处理rtcp信息到文件中
 
 /************************************ WEB SOCKET 方式 *********************************************************/
 /*********************************************************************************************
@@ -120,7 +110,7 @@ static GHashTable *g_hash_video_info = NULL;
  * 		   AppContext *app：应用参数                                                           *
  * Return: 开启的服务                                                                          *
  *********************************************************************************************/
-SoupServer* start_server(const int port, const char *tls_cert_file, const char *tls_key_file, AppContext *app) {
+SoupServer* start_server(const int port, const char *tls_cert_file, const char *tls_key_file, const char *task_name, AppContext *app) {
 
 	if (port <= 0 || NULL == app) {
 		return NULL;
@@ -130,6 +120,8 @@ SoupServer* start_server(const int port, const char *tls_cert_file, const char *
 	gchar *str = NULL;
 	GError *error = NULL;
 	SoupServer *server = NULL;
+	gint	ret = eMEDIA_SERVER_SUCCESS;
+	gboolean listen_flage = FALSE;
 
 	/* 1.创建视频信息存储HashMap */
 	g_hash_video_info = g_hash_table_new_full(g_str_hash, g_str_equal, \
@@ -144,37 +136,50 @@ SoupServer* start_server(const int port, const char *tls_cert_file, const char *
 		cert = g_tls_certificate_new_from_files (tls_cert_file, tls_key_file, &error);
 		if (error) {
 			  g_error ("Unable to create server: %s\n", error->message);
+			  g_error_free(error);
 			  stop_server(NULL);
 			  return NULL;
 		}
 		server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "simple-httpd ",
 								 SOUP_SERVER_TLS_CERTIFICATE, cert, NULL);
 		g_object_unref (cert);
-		soup_server_listen_local (server, port, SOUP_SERVER_LISTEN_HTTPS, &error);
+		listen_flage = soup_server_listen_local (server, port, SOUP_SERVER_LISTEN_HTTPS, &error);
 	} else {
 		server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "simple-httpd ", NULL);
-		soup_server_listen_local (server, port, 0, &error);
+		listen_flage = soup_server_listen_local (server, port, 0, &error);
+	}
+	if (FALSE == listen_flage) {
+		stop_server(NULL);
+		return NULL;
 	}
 
 	/* 3.增加WebSocket处理函数 */
 	soup_server_add_websocket_handler(server, NULL, NULL, NULL,
 								   websocket_callback,
 								   app, NULL);
-	//创建定时任务去发送RTCP的数据
-	GSource *source = g_timeout_source_new (1500);
-	guint sourceID = g_source_attach (source, NULL);
-	glib_log_info("source_get_ID:%d\n", sourceID);
-	g_source_set_callback (source, send_rtcp_callback, app, NULL);
-
 	uris = soup_server_get_uris (server);
 	for (u = uris; u; u = u->next) {
 		str = soup_uri_to_string (u->data, FALSE);
-		g_info ("Listening on %s", str);
+		glib_log_debug ("Listening on %s", str);
 		g_free (str);
 		soup_uri_free (u->data);
 	}
 	g_slist_free (uris);
-	g_info ("Waiting for requests...");
+	glib_log_debug ("Waiting for requests...");
+	//打开Gstream
+	gstream_init();
+
+	/* 4.创建定时任务去发送RTCP的数据 */
+	ret = init_rtcp_file(&g_rtcp_to_file, task_name);
+	if (eMEDIA_SERVER_SUCCESS != ret) {
+		glib_log_warning("init_rtcp_file err:%d", ret);
+		stop_server(server);
+		return NULL;
+	}
+	GSource *source = g_timeout_source_new (1000);
+	guint sourceID = g_source_attach (source, NULL);
+	glib_log_debug("source_get_ID:%d\n", sourceID);
+	g_source_set_callback (source, send_rtcp_callback, app, NULL);
 
 	return server;
 }
@@ -182,50 +187,194 @@ SoupServer* start_server(const int port, const char *tls_cert_file, const char *
 /*********************************************************************************************
  * Description: 停止websocket服务， 释放资源                                                    *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input : SoupServer* server:停止服务的指针                                                   *
+ * Return: 无                                                                                *
  *********************************************************************************************/
 void stop_server(SoupServer* server)
 {
 	//停止服务
 	if (NULL != server) {
-
+		glib_log_debug("Stop server...");
+		soup_server_disconnect (server);
 	}
 	//释放hashmap的值
 	if (NULL != g_hash_video_info) {
-		g_hash_table_foreach_remove(g_hash_video_info, hash_table_sub_remove_call, NULL);
+		//g_hash_table_foreach_remove(g_hash_video_info, hash_table_sub_remove_call, NULL);
 		g_hash_table_destroy (g_hash_video_info);
 	}
+	//释放rtcp写入文件的信息体
+	if (NULL != g_rtcp_to_file.time)			g_date_time_unref(g_rtcp_to_file.time);
+	if (NULL != g_rtcp_to_file.process_name)	g_string_free(g_rtcp_to_file.process_name, TRUE);
+	if (NULL != g_rtcp_to_file.runtime_file)	g_string_free(g_rtcp_to_file.runtime_file, TRUE);
+	if (NULL != g_rtcp_to_file.history_file)	g_string_free(g_rtcp_to_file.history_file, TRUE);
+	if (NULL != g_rtcp_to_file.history_list_file)	g_string_free(g_rtcp_to_file.history_list_file, TRUE);
+	if (NULL != g_rtcp_to_file.history) 			g_object_unref(g_rtcp_to_file.history);
 }
 
 /*********************************************************************************************
- * Description: 整理视频状态推送结构                                                 *
- * {
-	"type": "report",
-    "name": "front",
-	"stats":
+ * Description: 初始化rtcp参数写入文件的参数，创建文件	                                         *                                                                                     *
+ * Input : 	RtcpToFile *rtcp: RTCP:写入文件的的信息缓存区										 *
+ * 			const char *task_name: 测试任务名                                         		 *
+ * Return:  创建文件的结果																		 *
+ * 			eMEDIA_SERVER_SUCCESS:成功														 *
+ * 			其他：失败                                                                         *
+ *********************************************************************************************/
+static gint init_rtcp_file(RtcpToFile *rtcp, const char *task_name)
+{
+	g_assert(NULL != rtcp);
+
+	gchar 	date[128] = {0};
+	gint	ret = eMEDIA_SERVER_SUCCESS;
+
+	/* 1.申请空间 */
+	rtcp->process_name = g_string_new(NULL);
+	rtcp->runtime_file = g_string_new(FILE_PATH_RUNTIME);
+	rtcp->history_file = g_string_new(FILE_PATH_HISTORY);
+	rtcp->history_list_file = g_string_new(FILE_PATH_HISTORY_LIST);
+	if (NULL == rtcp->process_name \
+		|| NULL == rtcp->runtime_file \
+		|| NULL == rtcp->history_file \
+		|| NULL == rtcp->history_list_file) {
+		return eMSG_RTCP_FILE_INIT_ERR;
 	}
+
+	/* 2.创建文件 */
+	if (0 != get_process_name(rtcp->process_name)) {
+		return eMSG_RTCP_FILE_GET_PEOCESS_NAME_ERR;
+	}
+	glib_log_debug("process name:%s", rtcp->process_name->str);
+
+	rtcp->time = g_date_time_new_now_local();
+	if (NULL == rtcp->time) {
+		return eMSG_RTCP_FILE_GET_TIME_ERR;
+	}
+
+	//拷贝进程名称
+	rtcp->runtime_file = g_string_append (rtcp->runtime_file, rtcp->process_name->str);
+	rtcp->history_file = g_string_append (rtcp->history_file, rtcp->process_name->str);
+	rtcp->history_list_file = g_string_append (rtcp->history_list_file, rtcp->process_name->str);
+	//拷贝后缀名
+	rtcp->runtime_file = g_string_append (rtcp->runtime_file, ".json");
+	rtcp->history_list_file = g_string_append (rtcp->history_list_file, "_list.json");
+	//拼接历史数据的后缀名
+	sprintf(date, "_%s_%d%02d%02d_%02d%02d%02d.json", task_name, g_date_time_get_year(rtcp->time), g_date_time_get_month(rtcp->time), \
+			g_date_time_get_day_of_month(rtcp->time), g_date_time_get_hour(rtcp->time),  g_date_time_get_minute(rtcp->time), \
+			g_date_time_get_second(rtcp->time));
+	rtcp->history_file = g_string_append(rtcp->history_file, date);
+	glib_log_debug("runtime:%s", rtcp->runtime_file->str);
+	glib_log_debug("history_file:%s", rtcp->history_file->str);
+	glib_log_debug("history_list_file:%s", rtcp->history_list_file->str);
+
+	/* 3.检查文件是否存在，不存在则创建 */
+	//增加历史文件
+	glib_log_debug("Create %s start.", rtcp->history_file->str);
+	ret = open_file(rtcp->history_file->str, "w+", FILE_HISTORY_VALUE,\
+					strlen(FILE_HISTORY_VALUE));
+	if (aWork_FILE_SUCCESS != ret) {
+		return eMSG_RTCP_FILE_WRITE_LIST_ERR;
+	}
+	JsonNode *root = get_root_node_from_file(&(rtcp->history), rtcp->history_file->str);
+	if (NULL == root) {
+		return eMSG_RTCP_FILE_PARSE_LOAD_ERR;
+	}
+	rtcp->history_data_array = get_array_from_node(root, "data");
+	if (NULL == rtcp->history_data_array) {
+		return eMSG_RTCP_FILE_GET_DATA_ERR;
+	}
+	glib_log_debug("Create %s end.", rtcp->history_file->str);
+
+	//检查历史列表文件是否存在
+	glib_log_debug("Create %s start.", rtcp->history_list_file->str);
+	if (0 != access(rtcp->history_list_file->str, F_OK)) {
+		ret = open_file(rtcp->history_list_file->str, "w+", FILE_HISTORY_LIST_VALUE,\
+				strlen(FILE_HISTORY_LIST_VALUE));
+		if (aWork_FILE_SUCCESS != ret) {
+			return eMSG_RTCP_FILE_WRITE_LIST_ERR;
+		}
+	}
+	//增加历史列表
+	ret = add_rtcp_file_list(rtcp);
+	if (eMEDIA_SERVER_SUCCESS != ret) {
+		return ret;
+	}
+	glib_log_debug("Create %s end.", rtcp->history_list_file->str);
+
+	return eMEDIA_SERVER_SUCCESS;
+}
+/*********************************************************************************************
+ * Description: 向历史列表文件中增加节点                                                         *                                                                                     *
+ * Input :     RtcpToFile *rtcp: RTCP:写入文件的的信息缓存区                                     *
+ * Return:     eMEDIA_SERVER_SUCCESS：成功	其他：失败                                         *
+ *********************************************************************************************/
+static gint add_rtcp_file_list(RtcpToFile *rtcp)
+{
+	g_assert(NULL != rtcp);
+	gint		ret = eMEDIA_SERVER_SUCCESS;
+	GError 		*error = NULL;
+	JsonParser 	*parser = NULL;
+
+	JsonNode *root = get_root_node_from_file(&parser, rtcp->history_list_file->str);
+	if (NULL == root) {
+		return eMSG_RTCP_FILE_PARSE_LOAD_ERR;
+	}
+	JsonArray *files = get_array_from_node(root, "Files");
+	if (NULL == files) {
+		glib_log_warning ("History list no 'Files'");
+		ret = eMSG_RTCP_FILE_GET_ARRAY_ERR;
+		goto ERR;
+	}
+
+	//整理需要增加的节点
+	JsonObject *add_object = json_object_new();
+	if (NULL == add_object) {
+		ret = eMSG_RTCP_FILE_GET_ARRAY_ERR;
+		goto ERR;
+	}
+
+	json_object_set_string_member(add_object, "FileName", basename(rtcp->history_file->str));
+	json_object_set_int_member(add_object, "StartTime", g_date_time_to_unix(rtcp->time)*1000);
+
+	json_array_add_object_element (files, add_object);
+
+	JsonGenerator *gen = json_generator_new();
+	if (NULL == gen) {
+		ret = eMSG_RTCP_FILE_GET_GEN_ERR;
+		goto ERR;
+	}
+	json_generator_set_root(gen, root);
+	if (TRUE == json_generator_to_file (gen, g_rtcp_to_file.history_list_file->str, &error)) {
+		glib_log_debug("History list file write OK!!!");
+	} else {
+		 g_error_free(error);
+	}
+
+ERR:
+	g_object_unref (gen);
+	g_object_unref(parser);
+	return ret;
+}
+/*********************************************************************************************
+ * Description: 整理视频状态推送结构                                                 			 *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input : gpointer user_data：回到函数的参数                                                  *
+ * Return:  TRUE：定时器继续运行	FALSE：定时器结束                                              *
  *********************************************************************************************/
 static gboolean send_rtcp_callback (gpointer user_data)
 {
-	glib_log_info("send_rtcp_callback");
 	if (NULL == user_data) {
 		glib_log_info("send_rtcp_callback data is NULL");
 		return TRUE;
 	}
 	gint i = 0;
+	GError *err = NULL;
 	gint ret = eMEDIA_SERVER_SUCCESS;
-	JsonGenerator *gen = NULL;
-	JsonNode 	  *root= NULL;
+	JsonNode 	  *root= NULL, *root_history = NULL;
 	AppContext 	*app = user_data;
 
 	if (NULL == app->server) {
-		glib_log_info("send_rtcp_callback app->server is NULL");
 		return TRUE;
 	}
+
 	/* 1.创建JSON */
 	JsonBuilder *builder = json_builder_new ();
 	if (NULL == builder) {
@@ -233,64 +382,115 @@ static gboolean send_rtcp_callback (gpointer user_data)
 		return TRUE;
 	}
 	json_builder_begin_object(builder);
-	json_builder_set_member_name(builder, "type");
-	json_builder_add_string_value(builder, "report");
-	json_builder_set_member_name(builder, "name");
-	json_builder_add_string_value(builder, "front");
 
-	for (i = 0; i < RTCP_MAX_NUM; i++) {
-		json_builder_set_member_name(builder, g_rtcp_parameter[i].key);
-		switch (g_rtcp_parameter[i].value_type) {
-		 case eBollean: {
-			 json_builder_add_boolean_value(builder, g_rtcp_parameter[i].value.value_bool);
-		  } break;
-		  case eInt: {
-			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_int);
-		  } break;
-		  case eUint: {
-			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_uint);
-		  } break;
-		  case eInt64: {
-			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_int64);
-		  } break;
-		  case eUint64: {
-			  json_builder_add_int_value(builder, g_rtcp_parameter[i].value.value_uint64);
-		  } break;
-		}
+	//增加时间戳
+	GDateTime  	*date_time = g_date_time_new_now_local();
+	if (NULL == date_time) {
+		g_object_unref (builder);
+		return eMSG_RTCP_FILE_GET_TIME_ERR;
 	}
+	json_builder_set_member_name(builder, "TimeStamp");
+	json_builder_add_int_value(builder, g_get_real_time()/1000);
+
+	gchar *time_str = g_date_time_format(date_time, "%Y/%m/%d %T");
+	if (NULL != time_str) {
+		json_builder_set_member_name(builder, "CurrentTime");
+		json_builder_add_string_value(builder, time_str);
+		g_free(time_str);
+	}
+	g_date_time_unref(date_time);
+	//增加变量
+	g_hash_table_foreach(g_hash_video_info,	hash_tab_foreach_call, builder);
 	json_builder_end_object(builder);
 
 	/* 2.将JSON转化为字符串 */
-	gen = json_generator_new();
-	if (NULL == gen) {
-		g_object_unref (builder);
-		return TRUE;
-	}
-	root = json_builder_get_root(builder);
+	root = json_builder_get_root(builder);	/* 释放返回的值json_node_unref()。 */
 	if (NULL == root) {
-		g_object_unref (gen);
 		g_object_unref (builder);
 		return TRUE;
 	}
-	json_generator_set_root(gen, root);
-	gchar *reply = json_generator_to_data(gen, NULL);
-	if (NULL != reply) {
-		soup_websocket_connection_send_text(app->server, reply);
-		g_free(reply);
+	//将数据写入实时文件
+	ret = write_json_to_file(g_rtcp_to_file.runtime_file->str, root);
+	if (0 != ret) {
+		glib_log_warning("Runtime file write err:%d", ret);
+	}
+	//将数据写入历史文件
+	JsonObject *add_object = json_node_dup_object(root);
+	if (NULL == add_object) {
+		goto ERR;
+	}
+	json_array_add_object_element (g_rtcp_to_file.history_data_array, add_object);
+	root_history = json_parser_get_root (g_rtcp_to_file.history);	/* 返回的节点属于g_rtcp_to_file.history 所有，不应释放资源 */
+	if (NULL == root_history) {
+		goto ERR;
+	}
+	ret = write_json_to_file(g_rtcp_to_file.history_file->str, root_history);
+	if (0 != ret) {
+		glib_log_warning("History file write err:%d", ret);
 	}
 
 	/* 3.清理资源 */
-	json_node_free (root);
-	g_object_unref (gen);
-	g_object_unref (builder);
+ERR:
+	if (NULL != root) 	json_node_free (root);
+	//json_node_free (root_history);
+	if (NULL != builder) g_object_unref (builder);
 
-	return TRUE;
+	return TRUE;	//此处必须返回TRUE，否则不循环
 }
+
+/*********************************************************************************************
+ * Description: Hash中的视频参数遍历回调函数                                                	 *
+ *                                                                                           *
+ * Input : 	gpointer key：Hash 的key值
+ * 			gpointer value：Hash 的Vlaue
+ * 			gpointer user_data：回调传入的参数                                                 *
+ * Return:  无                                                                               *
+ *********************************************************************************************/
+static void hash_tab_foreach_call(gpointer key, gpointer value, gpointer user_data)
+{
+	guint i = 0;
+	JsonBuilder *builder = (JsonBuilder *)user_data;
+	VideoInfo *info = (VideoInfo *)value;
+
+	glib_log_debug("key:%s", (gchar*)key);
+
+	for (i = 0; NULL != value && i < RTCP_MAX_NUM; i++) {
+		json_builder_set_member_name(builder, g_rtcp_parameter[i].key);
+		switch (g_rtcp_parameter[i].value_type) {
+		 case eBollean: {
+			 json_builder_add_boolean_value(builder, info->pipe->RtcpParseValue[i].value_bool);
+		  } break;
+		  case eInt: {
+			  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_int);
+		  } break;
+		  case eUint: {
+			  if (g_rtcp_parameter[i].id == eSentRbJitter) {
+				  gint jitter = (0 != info->pipe->RtcpParseValue[eClockRate].value_int)? \
+						  info->pipe->RtcpParseValue[i].value_uint/info->pipe->RtcpParseValue[eClockRate].value_int : 0;
+				  json_builder_add_int_value(builder, jitter);
+			  } else {
+				  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_uint);
+			  }
+
+		  } break;
+		  case eInt64: {
+			  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_int64);
+		  } break;
+		  case eUint64: {
+			  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_uint64);
+		  } break;
+		}
+	}
+	return;
+}
+
 /*********************************************************************************************
  * Description: 释放HashMap资源，回调函数                                                       *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input : 	gpointer key：Hash 的key值
+ * 			gpointer value：Hash 的Vlaue
+ * 			gpointer user_data：回调传入的参数                                                 *
+ * Return:  是否移除成功                                                                       *
  *********************************************************************************************/
 static gboolean hash_table_sub_remove_call (gpointer key, gpointer value, gpointer user_data)
 {
@@ -303,12 +503,22 @@ static gboolean hash_table_sub_remove_call (gpointer key, gpointer value, gpoint
 	if (NULL != video) {
 		if (NULL != video->url) 	g_free(video->url);
 		if (NULL != video->name) 	g_free(video->name);
-		if (NULL != video->pipe)	clean_up(video->pipe);
+		if (NULL != video->user_id) 	g_free(video->user_id);
+		if (NULL != video->user_pwd) 	g_free(video->user_pwd);
+		if (NULL != video->pipe)	{
+			clean_up(video->pipe);
+			video->pipe = NULL;
+		}
 		g_free(video);
 	}
 	return TRUE;
 }
-
+/*********************************************************************************************
+ * Description: 释放HashMap的Key资源，回调函数                                                  *
+ *                                                                                           *
+ * Input : gpointer data：回调传入的指针（Key的指针）                                            *
+ * Return:  是否移除成功                                                                       *
+ *********************************************************************************************/
 static void hash_remove_key_call (gpointer data)
 {
 	gchar *key = (gchar *)data;
@@ -317,7 +527,12 @@ static void hash_remove_key_call (gpointer data)
 		g_free(key);
 	}
 }
-
+/*********************************************************************************************
+ * Description: 释放HashMap的Value资源，回调函数                                                  *
+ *                                                                                           *
+ * Input : gpointer data：回调传入的指针（Value的指针）                                            *
+ * Return:  是否移除成功                                                                       *
+ *********************************************************************************************/
 static void hash_remove_value_call (gpointer data)
 {
 	VideoInfo *video = (VideoInfo *)data;
@@ -325,7 +540,12 @@ static void hash_remove_value_call (gpointer data)
 		glib_log_info("Remove value:%s", video->name);
 		if (NULL != video->url) 	g_free(video->url);
 		if (NULL != video->name) 	g_free(video->name);
-		if (NULL != video->pipe)	clean_up(video->pipe);
+		if (NULL != video->user_id) 	g_free(video->user_id);
+		if (NULL != video->user_pwd) 	g_free(video->user_pwd);
+		if (NULL != video->pipe)	{
+			clean_up(video->pipe);
+			video->pipe = NULL;
+		}
 		g_free(video);
 	}
 }
@@ -365,14 +585,18 @@ static void on_connection(SoupSession *session, GAsyncResult *res, gpointer data
 /*********************************************************************************************
  * Description: websocket 回调函数                                                            *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input : 	 oupServer *server：服务
+ * 			 SoupWebsocketConnection *connection：链接
+     	 	 const char *path：路径
+     	 	 SoupClientContext *client：客户端
+     	 	 gpointer user_data：回调传入的数据                                                *
+ * Return:   无                                                                                *
  *********************************************************************************************/
 static void websocket_callback (SoupServer *server, SoupWebsocketConnection *connection,
      const char *path, SoupClientContext *client, gpointer user_data ) {
 
 	GBytes *received = NULL;
-	g_info("websocket connected");
+	glib_log_info("websocket connected");
 
 	AppContext *ctx = user_data;
 	ctx->server = g_object_ref (connection);
@@ -382,10 +606,13 @@ static void websocket_callback (SoupServer *server, SoupWebsocketConnection *con
 }
 
 /*********************************************************************************************
- * Description:                                                                              *
+ * Description: 处理消息                                                                      *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input : 	SoupWebsocketConnection *conn：链接
+ * 			gint type：信息类型
+ * 			GBytes *message：信息
+ * 			gpointer data：回调函数传入的参数                                                   *
+ * Return:  无                                                                               *
  *********************************************************************************************/
 static void on_message(SoupWebsocketConnection *conn, gint type, GBytes *message, gpointer data) {
 
@@ -421,8 +648,11 @@ static void on_message(SoupWebsocketConnection *conn, gint type, GBytes *message
 /*********************************************************************************************
  * Description: 处理字符类型信息                                                               *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input :	SoupWebsocketConnection *ws：链接
+ * 			gint type：信息类型
+ * 			GBytes *message：信息
+ * 			gpointer data：回调函数传入的参数 													 *
+ * Return:  eMEDIA_SERVER_SUCCESS:成功	其他：失败                                            *
  *********************************************************************************************/
 static gint on_text_message (SoupWebsocketConnection *ws,
                  SoupWebsocketDataType type,
@@ -431,7 +661,7 @@ static gint on_text_message (SoupWebsocketConnection *ws,
 	g_assert (ws != NULL && message != NULL && user_data != NULL);
 	g_assert_cmpint (type, ==, SOUP_WEBSOCKET_DATA_TEXT);
 
-	gint 		ret		= 0;
+	gint 		ret		= eMEDIA_SERVER_SUCCESS;
 	gsize 		length 	= 0;
 	const gchar *msg_ptr = NULL;
 	gchar *msg_reply 	= NULL;
@@ -442,7 +672,7 @@ static gint on_text_message (SoupWebsocketConnection *ws,
 		glib_log_warning("Get text err");
 		return eMSG_GET_ERR;
 	}
-	glib_log_info("Recv[%ld]:%s", length, msg_ptr);
+	glib_log_debug("Recv[%ld]:%s", length, msg_ptr);
 
 	//2.以JSON格式解析数据并回复
 	ret = parse_text_msg_on_json(msg_ptr, length, &msg_reply, user_data);
@@ -457,10 +687,13 @@ static gint on_text_message (SoupWebsocketConnection *ws,
 }
 
 /*********************************************************************************************
- * Description: 处理二进制信息                                                                 *
+ * Description: 处理二进制信息(暂时不用)                                                        *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input :	SoupWebsocketConnection *ws：链接
+ * 			gint type：信息类型
+ * 			GBytes *message：信息
+ * 			gpointer data：回调函数传入的参数 													 *
+ * Return:  0:成功	其他：失败                                            					 *
  *********************************************************************************************/
 static gint on_binary_message (SoupWebsocketConnection *ws,
 		   SoupWebsocketDataType type,
@@ -471,14 +704,19 @@ static gint on_binary_message (SoupWebsocketConnection *ws,
 	g_assert_cmpint (type, ==, SOUP_WEBSOCKET_DATA_BINARY);
 	g_assert (*receive == NULL);
 	g_assert (message != NULL);
+
+	return 0;
 }
 
 
 /*********************************************************************************************
- * Description:                                                               *
+ * Description: 以JSON形式解析字符串消息                                                        *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input :	const gchar *msg_ptr：字符串数据
+ * 			gsize length：字符串长度
+ * 			gchar **msg_reply：回复数据
+ * 			gpointer user_data：用户参数                                                             *
+ * Return:  eMEDIA_SERVER_SUCCESS：成功	其他：失败                                            *
  *********************************************************************************************/
 static gint parse_text_msg_on_json(const gchar *msg_ptr, gsize length, gchar **msg_reply, gpointer user_data)
 {
@@ -498,6 +736,7 @@ static gint parse_text_msg_on_json(const gchar *msg_ptr, gsize length, gchar **m
 	}
 	if (TRUE != json_parser_load_from_data (parser, msg_ptr, length, &error)) {
 		glib_log_warning("Msg json parse err:%s", error->message);
+		g_error_free(error);
 		ret = eMSG_JSON_LOAD_ERR;
 		goto ERR;
 	}
@@ -509,7 +748,7 @@ static gint parse_text_msg_on_json(const gchar *msg_ptr, gsize length, gchar **m
 		goto ERR;
 	}
 	object = json_node_get_object (root);
-	if (!json_object_has_member (object, "type")) {
+	if (NULL == object || !json_object_has_member (object, "type")) {
 		glib_log_warning ("received message without 'type'");
 		ret = eMSG_JSON_GET_TYPE_ERR;
 		goto ERR;
@@ -544,17 +783,19 @@ ERR:
 }
 
 /*********************************************************************************************
- * Description: play命令解析                                                                              *
+ * Description: play命令解析                                                                  *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input :  gpointer msg_data：JSON Object
+ * 			gchar **msg_reply：回复数据
+ * 			gpointer user_data：用户参数                                                       *
+ * Return:  返回处理结果                                                                       *
  *********************************************************************************************/
 static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user_data)
 {
 	g_assert (NULL != msg_data && NULL != reply && NULL != user_data);
 
 	gint		ret		= eMEDIA_SERVER_SUCCESS;
-	const gchar	*name 	= NULL,	*url	= NULL;
+	const gchar	*name = NULL, *url = NULL, *user_id = NULL, *user_pw = NULL;
 	JsonObject 	*object 	= msg_data;
 	RTSPServerInfo info = {0};
 	AppContext 	*app = user_data;
@@ -563,15 +804,19 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 
 	//1.查询需要的字段并获取
 	if (!json_object_has_member (object, "name") \
-		|| !json_object_has_member (object, "url")) {
+		|| !json_object_has_member (object, "url") \
+		|| !json_object_has_member (object, "user_id") \
+		|| !json_object_has_member (object, "user_pw")) {
 
-		glib_log_warning ("Received message without 'name' || 'url'");
+		glib_log_warning ("Received message without 'name' || 'url' || 'user_id' || 'user_pw'");
 		return eMSG_JSON_PLAY_FIND_MEMBER_ERR;
 	}
 	name = json_object_get_string_member (object, "name");
 	url = json_object_get_string_member (object, "url");
-	if (NULL == name || NULL == url) {
-		glib_log_warning ("Get 'name' || 'url' value err");
+	user_id = json_object_get_string_member (object, "user_id");
+	user_pw = json_object_get_string_member (object, "user_pw");
+	if (NULL == name || NULL == url || NULL == user_id || NULL == user_pw) {
+		glib_log_warning ("Get 'name' || 'url' || 'user_id' || 'user_pwd' value err");
 		return eMSG_JSON_PLAY_GET_MEMBER_ERR;
 	}
 	glib_log_debug("play url:%s", url);
@@ -591,7 +836,6 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 		ret = eMSG_JSON_PLAY_KEY_ALREADY_EXIST;
 		goto ERR;
 	}
-
 	video = (VideoInfo *)g_malloc0(sizeof(VideoInfo));
 	if (NULL == video) {
 		glib_log_warning ("Video info malloc err");
@@ -611,10 +855,27 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 		goto ERR;
 	}
 	strncpy(video->url, url, strlen(url));
+	video->user_id = (gchar *)g_malloc0(strlen(user_id)+1);
+	if (NULL == video->user_id) {
+		glib_log_warning ("User_id info malloc err");
+		ret = eMSG_JSON_PLAY_VIDEO_MALLOC_ERR;
+		goto ERR;
+	}
+	strncpy(video->user_id, user_id, strlen(user_id));
+	video->user_pwd = (gchar *)g_malloc0(strlen(user_pw)+1);
+	if (NULL == video->user_pwd) {
+		glib_log_warning ("User_pwd info malloc err");
+		ret = eMSG_JSON_PLAY_VIDEO_MALLOC_ERR;
+		goto ERR;
+	}
+	strncpy(video->user_pwd, user_pw, strlen(user_pw));
+
 	video->status = eVIDEO_STATUS_INIT;
 	///开启视频通道
-	info.location = url;
-	video->pipe = start_pipeline(&info, app->loop);
+	info.location = video->url;
+	info.user_id = video->user_id;
+	info.user_pwd = video->user_pwd;
+	video->pipe = start_pipeline(&info, app->loop, name);
 	if (NULL != video->pipe) {
 		video->status = eVIDEO_STATUS_PLAY;
 		if (TRUE == g_hash_table_insert(g_hash_video_info, key, video)) {
@@ -638,6 +899,8 @@ ERR:
 		if (NULL != video) {
 			if (NULL != video->url) g_free(video->url);
 			if (NULL != video->name) g_free(video->name);
+			if (NULL != video->user_id) g_free(video->user_id);
+			if (NULL != video->user_pwd) g_free(video->user_pwd);
 			g_free(video);
 		}
 		return reply_text_msg_on_json(reply, "result", "failed");
@@ -645,13 +908,13 @@ ERR:
 	return reply_text_msg_on_json(reply, "result", "success");
 }
 
-
-
 /*********************************************************************************************
- * Description: play命令解析                                                                              *
+ * Description: stop命令解析                                                                  *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input :  gpointer msg_data：JSON Object
+ * 			gchar **msg_reply：回复数据
+ * 			gpointer user_data：用户参数                                                       *
+ * Return:  返回处理结果                                                                       *
  *********************************************************************************************/
 static gint msg_requst_type_stop(gpointer msg_data, gchar **reply, gpointer user_data)
 {
@@ -682,6 +945,7 @@ static gint msg_requst_type_stop(gpointer msg_data, gchar **reply, gpointer user
 	//2.关闭视频，删除HashMap中的
 	video = (VideoInfo *)g_hash_table_lookup(g_hash_video_info, name);
 	if (NULL != video) {
+		glib_log_debug("Hash remove key:%s", video->name);
 		clean_up(video->pipe);
 		video->pipe = NULL;
 		found = g_hash_table_remove(g_hash_video_info, name);
@@ -706,8 +970,11 @@ ERR:
 /*********************************************************************************************
  * Description: 仅支持特定的回复命令                                                            *
  *                                                                                           *
- * Input :                                                                                   *
- * Return:                                                                                   *
+ * Input :		gchar **reply：返回字符串存储缓存区
+ * 			 	const gchar *member：key
+ * 			 	const gchar *value：value                                                    *
+ * Return:      eMEDIA_SERVER_SUCCESS：成功
+ * 				其他：失败                                                                     *
  *********************************************************************************************/
 static gint reply_text_msg_on_json(gchar **reply, const gchar *member, const gchar *value)
 {

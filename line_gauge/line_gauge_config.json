@@ -1,0 +1,30 @@
+{
+	"PagesConfig": [{
+		"PageName": "GStreamer",
+		"Title": "GStereamer视频参数评估",
+		"Subtext": "数据来自华为vlab",
+		"RuntimeDataUrl": "data/runtime/GStreamer.json",
+		"ListBaseUrl": "data/list/",
+		"DataList": ["bitrate", "sent-rb-packetslost", "sent-rb-jitter"],
+		"Line": [{
+			"Title": "码率 ",
+			"DataName": "bitrate",
+			"Unit": "bps"
+		}, {
+			"Title": "累计丢包数",
+			"DataName": "sent-rb-packetslost",
+			"Unit": ""
+		}, {
+			"Title": "间隔抖动",
+			"DataName": "sent-rb-jitter",
+			"Unit": "ms"
+		}],
+		"Gauge": {
+			"Title": "实时综合KPI评估",
+			"DataName": "score",
+			"Max": "5",
+			"Level1": "3",
+			"Level2": "4.5"
+		}
+	}]
+}

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<head>
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">  
+	<meta charset="utf-8">  
+	<title></title>
+	
+	<link href="common/css/bootstrap.min.css" rel="stylesheet">
+	<link href="common/css/bootstrap-select.min.css" rel="stylesheet">
+
+     <script src="common/js/jquery-2.1.1.min.js"></script>
+	 <script src="common/js/bootstrap.min.js"></script>
+	 <script src="common/js/bootstrap-select.min.js"></script>
+	 <script src="common/js/echarts.min.js"></script>
+	 <script src="common/js/line_gauge_common.js"></script>
+    
+</head>
+<body>
+	<h2 class="text-center"></h2>
+	<div>
+	<form class="form-horizontal " role="form" style="margin-left: 20px">
+		<div class="form-group" >
+			<div class="col-lg-2">
+				<select id="PageName" class="selectpicker form-control">
+				</select>
+			</div>
+			<div class="col-lg-4">
+				<select id="DataList"  class="selectpicker form-control" multiple data-max-options="5">
+				</select>
+			</div>
+			<div  class="col-lg-1">
+				<button type="button" class="btn btn-primary" id="query">确定</button>	
+			</div>
+			<div class="col-lg-1">
+				<a href="line_gauge_history.html">历史数据</a>
+			</div>
+		</div>
+	</form>
+	
+</div>
+
+	<hr/>
+	<div id="pic_left" style="width: 50%;float: left">
+
+	</div>
+	
+	<div id = "pic4" style="height:600px;width: 45%; margin-top: 30px; float : right;"></div>
+	
+
+<script src="line_gauge_data.js"></script>
+<script type="text/javascript">
+//全局变量
+var pagesConfig;
+var config;
+var subtext;
+var max;//最高分
+var level1;//红黄区域分割线分值
+var level2;//黄绿区域分割线分值
+var url;//实时数据文件地址
+
+var selectedData;
+var selectedDataList;
+
+var interval;
+
+//加载文档完毕执行
+$(function () {
+	//读取配置文件并完成相关设置
+	get_config();
+	set_config();
+
+	//PageName下拉列表改变，页面配置改变
+	$("#PageName").change(function(){
+		set_config();
+		clearInterval(interval);//停止
+	})
+
+	//点击确定按钮，根据新的配置重新画图
+	$("#query").click(function(){
+		clearInterval(interval);//停止
+		//清空页面图表
+		$("#pic_left").empty();
+
+		//获取设置
+		selectedDataList = $("#DataList").val();
+		selectedData = new Object();
+		var dataCount = selectedDataList.length;
+		var lineHeight = 760/dataCount;
+
+		for(var i = 0; i < dataCount; i++){
+			selectedData[selectedDataList[i]]=[];
+			$("#pic_left").append('<div id = "pic_'+ i +'" style="height:'+ lineHeight + 'px;"></div>');
+		}
+		selectedData["xAxis"] = [];
+		selectedData["score"] = 0;
+		
+		interval = setInterval(draw_runtime, 1000); //重新启动
+	});
+
+
+$(".selectpicker").selectpicker({ 
+	noneSelectedText : '请选择'//默认显示内容 
+});
+$('.selectpicker').selectpicker('refresh'); 
+	
+});
+
+//读取配置文件
+function get_config(){
+	$.ajax({
+		url : "line_gauge_config.json",
+		type : "GET",
+		dataType : "json",
+		cache:false,
+		async:false,
+		success:function(data)
+		{
+			pagesConfig = data.PagesConfig;
+			$("#PageName").empty();
+			for (var i = 0; i < pagesConfig.length; i++) {
+				$("#PageName").append("<option>" + pagesConfig[i]["PageName"] + "</option>");
+			}
+		},
+		error:function(argv){
+			console.log(argv);
+			alert("配置文件加载失败")
+		}
+	});
+}
+
+function set_config(){
+		//获取页面配置
+		config = pagesConfig.filter(function(p){
+			return p.PageName == $("#PageName").val();//"CloudOperationMonitor"; //CloudLiveStreamingMonitor
+		});
+		//数组转对象，筛选结果转换成JS对象
+		config = JSON.parse(JSON.stringify(config[0]));
+		//console.log(config);
+		//读取配置文件标题
+		var title = config.Title;
+		$('h2').text(title);
+		var dataList = config.DataList;
+		$("#DataList").empty();
+		for (var i = 0; i < dataList.length; i++) {
+			$("#DataList").append("<option>" + dataList[i] + "</option>");
+		}
+		$('.selectpicker').selectpicker('refresh'); 
+		//获取配置文件中配置参数
+		subtext = config.Subtext;
+		max = config.Gauge.Max;
+		level1 = config.Gauge.Level1;
+		level2 = config.Gauge.Level2;
+		url = config.RuntimeDataUrl;
+}
+
+//每秒获取实时数据并画图显示
+function draw_runtime(){
+	get_runtime_data(url,selectedDataList,function(result){
+		//根据已选择数据，绘制相应折线图
+		for(var i = 0; i < selectedDataList.length; i++){
+			var dataName = selectedDataList[i];
+			//选出配置文件中该数据的配置
+			var lineOption = config.Line.filter(function(result){ return result.DataName == dataName;});
+			drawLine({ el:'pic_'+ i, option:{ title: lineOption[0].Title, subtext: subtext, xAxis: result.xAxis,data: result[dataName],unit: lineOption[0].Unit}});
+		}
+		//drawLine({ el:"pic1", option:{ title: config.Line[0].Title, subtext: subtext, xAxis: result.xAxis,data: result.data1,unit: config.Line[0].Unit}});
+		//drawLine({ el:"pic2", option:{ title: config.Line[1].Title, subtext: subtext, xAxis: result.xAxis,data: result.data2,unit: config.Line[1].Unit}});
+		//drawLine({ el:"pic3", option:{ title: config.Line[2].Title, subtext: subtext, xAxis: result.xAxis,data: result.data2,unit: config.Line[2].Unit}});
+		//drawLine("pic1",config.Line[0].Title,subtext,result.xAxis,result.data1,config.Line[0].Unit);
+		//drawLine("pic2",config.Line[1].Title,subtext,result.xAxis,result.data2,config.Line[1].Unit);
+		//drawLine("pic3",config.Line[2].Title,subtext,result.xAxis,result.data3,config.Line[2].Unit);
+		drawGauge("pic4",config.Gauge.Title,subtext,result.score,max,level1,level2);
+	})
+}
+
+
+</script>
+<div class="navbar navbar-default navbar-bottom" style="margin-top:30px;clear:both;">
+  <div class = "container">
+  	   <p class="text-center" style="padding-top: 12px">Copyright &copy; 2019-2020 X Labs. All Rights Reserved.</p>
+  </div>
+ </div>
+</body>
+</html>
