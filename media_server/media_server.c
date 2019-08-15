@@ -331,8 +331,14 @@ static gint add_rtcp_file_list(RtcpToFile *rtcp)
 		goto ERR;
 	}
 
-	json_object_set_string_member(add_object, "FileName", basename(rtcp->history_file->str));
+	gchar *file_name = g_path_get_basename(rtcp->history_file->str);
+	if (NULL == file_name) {
+		ret = eMSG_RTCP_FILE_GET_FILE_NAME_ERR;
+		goto ERR;
+	}
+	json_object_set_string_member(add_object, "FileName", file_name);
 	json_object_set_int_member(add_object, "StartTime", g_date_time_to_unix(rtcp->time)*1000);
+	g_free(file_name);
 
 	json_array_add_object_element (files, add_object);
 

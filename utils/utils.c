@@ -228,11 +228,23 @@ gint get_process_name(GString *name)
 		return -2;
 	}
 	app_name[count] = '\0';
-	name = g_string_append (name, "GStreamer");
-	//name = g_string_append (name, basename(app_name));
-	if (NULL == name) {
+#if 0
+	gchar *file_name = g_path_get_basename(app_name);
+	if (NULL == file_name) {
 		return -3;
 	}
+	name = g_string_append (name, file_name);
+	if (NULL == name) {
+		g_free(file_name);
+		return -4;
+	}
+	g_free(file_name);
+#else
+	name = g_string_append (name, "GStreamer");
+	if (NULL == name) {
+		return -4;
+	}
+#endif
 	return 0;
 }
 

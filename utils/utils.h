@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <libgen.h>
 #include <glib.h>
 #include <glib-object.h>
 #include <json-glib/json-glib.h>
@@ -25,7 +24,7 @@ void log_handler_cb (const gchar *log_domain, GLogLevelFlags log_level, const gc
 gint get_process_name(GString *name);
 
 /// 日志输出头.线程号(任务号) + [时间]
-#define CLOG_PREFIX "--%s==%s==[%d]:"
+#define CLOG_PREFIX "--%s==%s==[%d]:\r\n"
 
 ///日志结束
 #if 0
@@ -35,19 +34,20 @@ gint get_process_name(GString *name);
 #endif
 #  define glib_log_debug(fmt, ...) \
 		g_debug("D"CLOG_PREFIX fmt CLOG_END,\
-				basename(__FILE__),__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
+				__FILE__,__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
 #  define glib_log_info(fmt, ...) \
 		g_info("I"CLOG_PREFIX fmt CLOG_END,\
-				basename(__FILE__),__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
+				__FILE__,__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
 #  define glib_log_msg(fmt, ...) \
 		g_message("M"CLOG_PREFIX fmt CLOG_END,\
-				basename(__FILE__),__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
+				__FILE__,__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
 #  define glib_log_warning(fmt, ...) \
 		g_warning("W"CLOG_PREFIX fmt CLOG_END,\
-				basename(__FILE__),__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
+				__FILE__,__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
 #  define glib_log_error(fmt, ...) \
 		g_error("E"CLOG_PREFIX fmt CLOG_END,\
-				basename(__FILE__),__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
+				__FILE__,__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
+
 
 //定义的返回结果
 enum {
