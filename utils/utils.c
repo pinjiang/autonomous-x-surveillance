@@ -120,20 +120,13 @@ gint write_json_to_file(const gchar *file, JsonNode *node)
 	g_assert(NULL != file && NULL != node);
 
 	gsize str_len = 0;
-	GError *error = NULL;
 	JsonGenerator *gen = json_generator_new();
 	if (NULL == gen) {
 		return -1;
 	}
 	json_generator_set_root(gen, node);
 
-//	if (TRUE != json_generator_to_file (gen, file, &error)) {
-//		glib_log_warning("Write json to file err:[%s]%s", file, error->message);
-//		g_error_free(error);
-//	}
 	gchar *str = json_generator_to_data(gen, &str_len);
-	//glib_log_info("runtime:%s", str);
-
 	if (aWork_FILE_SUCCESS != open_file(file, "w+", str, str_len)) {
 		g_free(str);
 		g_object_unref (gen);
@@ -221,6 +214,7 @@ gint get_process_name(GString *name)
 	if (NULL == name) {
 		return -1;
 	}
+#if 0
 	gchar app_name[256] = {0};
 	//需要proc文件系统支持
 	gint count = readlink("/proc/self/exe", app_name, 1024);
@@ -228,7 +222,7 @@ gint get_process_name(GString *name)
 		return -2;
 	}
 	app_name[count] = '\0';
-#if 0
+
 	gchar *file_name = g_path_get_basename(app_name);
 	if (NULL == file_name) {
 		return -3;

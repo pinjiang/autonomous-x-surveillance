@@ -7,12 +7,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <libsoup/soup.h>
 #include <json-glib/json-glib.h>
 #include <glib/gstdio.h>
 
-
+#include "sys.h"
 #include "media_server.h"
 #include "utils.h"
 #include "gst_rtsp.h"
@@ -43,12 +44,15 @@ typedef struct {
 	RtspPipelineBundle 	*pipe;
 }VideoInfo;
 //RTCP控制数据写入文件
-#define FILE_PATH_RUNTIME		"../line_gauge/data/runtime/"
-#define FILE_PATH_HISTORY		"../line_gauge/data/history/"
-#define FILE_PATH_HISTORY_LIST	"../line_gauge/data/list/"
+#define FILE_PATH_RUNTIME		"/runtime/"
+#define FILE_PATH_HISTORY		"/history/"
+#define FILE_PATH_HISTORY_LIST	"/list/"
 
 #define FILE_HISTORY_LIST_VALUE "{\"Files\":[]}"
 #define FILE_HISTORY_VALUE 		"{\"data\":[]}"
+
+typedef void (*HashForeach)(gpointer key, gpointer value, gpointer user_data);
+
 typedef struct {
 	GString *process_name;
 	GString	*runtime_file;
@@ -66,13 +70,15 @@ typedef struct {
 void stop_server(SoupServer* server);
 
 /*******************************************************************************************************/
-static gint init_rtcp_file(RtcpToFile *rtcp, const char *task_name);
+static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gchar *task_name);
 static gint add_rtcp_file_list(RtcpToFile *rtcp);
 //内部使用函数
 static void websocket_callback (SoupServer *server, SoupWebsocketConnection *connection,
 								const char *path, SoupClientContext *client, gpointer user_data);
 static gboolean send_rtcp_callback (gpointer user_data);
-static void hash_tab_foreach_call(gpointer key, gpointer value, gpointer user_data);
+static JsonNode* add_rtcp_data_to_json(HashForeach hash_foreach_call);
+static void hash_tab_foreach_runtime_call(gpointer key, gpointer value, gpointer user_data);
+static void hash_tab_foreach_history_call(gpointer key, gpointer value, gpointer user_data);
 ///解析websocket的数据
 static void on_message(SoupWebsocketConnection *conn, gint type, GBytes *message, gpointer data);
 ////websocket的字符串信息处理函数
@@ -110,9 +116,10 @@ static RtcpToFile g_rtcp_to_file = {0};			//处理rtcp信息到文件中
  * 		   AppContext *app：应用参数                                                           *
  * Return: 开启的服务                                                                          *
  *********************************************************************************************/
-SoupServer* start_server(const int port, const char *tls_cert_file, const char *tls_key_file, const char *task_name, AppContext *app) {
+SoupServer* start_server(AppOption *opt, AppContext *app)
+{
 
-	if (port <= 0 || NULL == app) {
+	if (NULL == opt || NULL == app) {
 		return NULL;
 	}
 	GSList *uris = NULL, *u = NULL;
@@ -132,8 +139,8 @@ SoupServer* start_server(const int port, const char *tls_cert_file, const char *
 	}
 
 	/* 2.创建监听服务 */
-	if ( tls_cert_file && tls_key_file ) {
-		cert = g_tls_certificate_new_from_files (tls_cert_file, tls_key_file, &error);
+	if ( opt->tls_cert_file && opt->tls_key_file ) {
+		cert = g_tls_certificate_new_from_files (opt->tls_cert_file, opt->tls_key_file, &error);
 		if (error) {
 			  g_error ("Unable to create server: %s\n", error->message);
 			  g_error_free(error);
@@ -143,10 +150,10 @@ SoupServer* start_server(const int port, const char *tls_cert_file, const char *
 		server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "simple-httpd ",
 								 SOUP_SERVER_TLS_CERTIFICATE, cert, NULL);
 		g_object_unref (cert);
-		listen_flage = soup_server_listen_local (server, port, SOUP_SERVER_LISTEN_HTTPS, &error);
+		listen_flage = soup_server_listen_local (server, opt->listen_port, SOUP_SERVER_LISTEN_HTTPS, &error);
 	} else {
 		server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "simple-httpd ", NULL);
-		listen_flage = soup_server_listen_local (server, port, 0, &error);
+		listen_flage = soup_server_listen_local (server, opt->listen_port, 0, &error);
 	}
 	if (FALSE == listen_flage) {
 		stop_server(NULL);
@@ -170,7 +177,7 @@ SoupServer* start_server(const int port, const char *tls_cert_file, const char *
 	gstream_init();
 
 	/* 4.创建定时任务去发送RTCP的数据 */
-	ret = init_rtcp_file(&g_rtcp_to_file, task_name);
+	ret = init_rtcp_file(&g_rtcp_to_file, opt->result_file_path, opt->task_name);
 	if (eMEDIA_SERVER_SUCCESS != ret) {
 		glib_log_warning("init_rtcp_file err:%d", ret);
 		stop_server(server);
@@ -219,24 +226,38 @@ void stop_server(SoupServer* server)
  * 			eMEDIA_SERVER_SUCCESS:成功														 *
  * 			其他：失败                                                                         *
  *********************************************************************************************/
-static gint init_rtcp_file(RtcpToFile *rtcp, const char *task_name)
+static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gchar *task_name)
 {
-	g_assert(NULL != rtcp);
+	g_assert(NULL != rtcp && NULL != result_path && NULL != task_name);
 
 	gchar 	date[128] = {0};
 	gint	ret = eMEDIA_SERVER_SUCCESS;
 
 	/* 1.申请空间 */
+	gchar *path = g_strdup (result_path);
+	if (NULL == path) {
+		return eMEDIA_SERVER_INVALID;
+	}
+	glib_log_debug("Result file path:%c", path[strlen(path)-1]);
+	if ('/' == path[strlen(path)-1]) {
+		path[strlen(path)-1] = '\0';
+	}
+	glib_log_debug("Result file path:%s", path);
+
 	rtcp->process_name = g_string_new(NULL);
-	rtcp->runtime_file = g_string_new(FILE_PATH_RUNTIME);
-	rtcp->history_file = g_string_new(FILE_PATH_HISTORY);
-	rtcp->history_list_file = g_string_new(FILE_PATH_HISTORY_LIST);
+	rtcp->runtime_file = g_string_new(path);
+	rtcp->history_file = g_string_new(path);
+	rtcp->history_list_file = g_string_new(path);
+	g_free(path);
 	if (NULL == rtcp->process_name \
 		|| NULL == rtcp->runtime_file \
 		|| NULL == rtcp->history_file \
 		|| NULL == rtcp->history_list_file) {
 		return eMSG_RTCP_FILE_INIT_ERR;
 	}
+	rtcp->runtime_file = g_string_append (rtcp->runtime_file, FILE_PATH_RUNTIME);
+	rtcp->history_file = g_string_append (rtcp->history_file, FILE_PATH_HISTORY);
+	rtcp->history_list_file = g_string_append (rtcp->history_list_file, FILE_PATH_HISTORY_LIST);
 
 	/* 2.创建文件 */
 	if (0 != get_process_name(rtcp->process_name)) {
@@ -285,13 +306,23 @@ static gint init_rtcp_file(RtcpToFile *rtcp, const char *task_name)
 
 	//检查历史列表文件是否存在
 	glib_log_debug("Create %s start.", rtcp->history_list_file->str);
-	if (0 != access(rtcp->history_list_file->str, F_OK)) {
+	GFile * list_file = g_file_new_for_path (rtcp->history_list_file->str);
+	if (FALSE == g_file_query_exists (list_file, NULL)) {
 		ret = open_file(rtcp->history_list_file->str, "w+", FILE_HISTORY_LIST_VALUE,\
 				strlen(FILE_HISTORY_LIST_VALUE));
 		if (aWork_FILE_SUCCESS != ret) {
+			g_object_unref(list_file);
 			return eMSG_RTCP_FILE_WRITE_LIST_ERR;
 		}
 	}
+	g_object_unref(list_file);
+//	if (0 != access(rtcp->history_list_file->str, F_OK)) {
+//		ret = open_file(rtcp->history_list_file->str, "w+", FILE_HISTORY_LIST_VALUE,\
+//				strlen(FILE_HISTORY_LIST_VALUE));
+//		if (aWork_FILE_SUCCESS != ret) {
+//			return eMSG_RTCP_FILE_WRITE_LIST_ERR;
+//		}
+//	}
 	//增加历史列表
 	ret = add_rtcp_file_list(rtcp);
 	if (eMEDIA_SERVER_SUCCESS != ret) {
@@ -377,87 +408,168 @@ static gboolean send_rtcp_callback (gpointer user_data)
 	JsonNode 	  *root= NULL, *root_history = NULL;
 	AppContext 	*app = user_data;
 
-	if (NULL == app->server) {
+	if (NULL == app->server || NULL == g_hash_video_info
+		|| 0 == g_hash_table_size(g_hash_video_info)) {
 		return TRUE;
 	}
 
 	/* 1.创建JSON */
-	JsonBuilder *builder = json_builder_new ();
-	if (NULL == builder) {
-		glib_log_warning ("Build  JsonBuilder err");
-		return TRUE;
-	}
-	json_builder_begin_object(builder);
-
-	//增加时间戳
-	GDateTime  	*date_time = g_date_time_new_now_local();
-	if (NULL == date_time) {
-		g_object_unref (builder);
+	//获取时间戳
+	g_rtcp_to_file.time = g_date_time_new_now_local();
+	if (NULL == g_rtcp_to_file.time) {
 		return eMSG_RTCP_FILE_GET_TIME_ERR;
 	}
-	json_builder_set_member_name(builder, "TimeStamp");
-	json_builder_add_int_value(builder, g_get_real_time()/1000);
 
-	gchar *time_str = g_date_time_format(date_time, "%Y/%m/%d %T");
-	if (NULL != time_str) {
-		json_builder_set_member_name(builder, "CurrentTime");
-		json_builder_add_string_value(builder, time_str);
-		g_free(time_str);
-	}
-	g_date_time_unref(date_time);
-	//增加变量
-	g_hash_table_foreach(g_hash_video_info,	hash_tab_foreach_call, builder);
-	json_builder_end_object(builder);
-
-	/* 2.将JSON转化为字符串 */
-	root = json_builder_get_root(builder);	/* 释放返回的值json_node_unref()。 */
-	if (NULL == root) {
-		g_object_unref (builder);
-		return TRUE;
-	}
-	//将数据写入实时文件
-	ret = write_json_to_file(g_rtcp_to_file.runtime_file->str, root);
-	if (0 != ret) {
-		glib_log_warning("Runtime file write err:%d", ret);
-	}
-	//将数据写入历史文件
-	JsonObject *add_object = json_node_dup_object(root);
-	if (NULL == add_object) {
-		goto ERR;
-	}
-	json_array_add_object_element (g_rtcp_to_file.history_data_array, add_object);
-	root_history = json_parser_get_root (g_rtcp_to_file.history);	/* 返回的节点属于g_rtcp_to_file.history 所有，不应释放资源 */
-	if (NULL == root_history) {
-		goto ERR;
-	}
-	ret = write_json_to_file(g_rtcp_to_file.history_file->str, root_history);
-	if (0 != ret) {
-		glib_log_warning("History file write err:%d", ret);
+	/* 2.写入实时数据 */
+	root = add_rtcp_data_to_json(hash_tab_foreach_runtime_call);
+	if (NULL != root) {
+		ret = write_json_to_file(g_rtcp_to_file.runtime_file->str, root);
+		if (0 != ret) {
+			glib_log_warning("Runtime file write err:%d", ret);
+		}
+		json_node_free (root);
+		root = NULL;
+	} else {
+		glib_log_warning("Runtime json add data err");
 	}
 
-	/* 3.清理资源 */
-ERR:
-	if (NULL != root) 	json_node_free (root);
-	//json_node_free (root_history);
-	if (NULL != builder) g_object_unref (builder);
+	/* 3.写入历史数据 */
+	root = add_rtcp_data_to_json(hash_tab_foreach_history_call);
+	if (NULL != root) {
+		JsonObject *add_object = json_node_dup_object(root);
+		if (NULL == add_object) {
+			json_node_free (root);
+			return TRUE;
+		}
+		json_array_add_object_element (g_rtcp_to_file.history_data_array, add_object);
+		root_history = json_parser_get_root (g_rtcp_to_file.history);	/* 返回的节点属于g_rtcp_to_file.history 所有，不应释放资源 */
+		if (NULL == root_history) {
+			json_node_free (root);
+			return TRUE;
+		}
+		ret = write_json_to_file(g_rtcp_to_file.history_file->str, root_history);
+		if (0 != ret) {
+			glib_log_warning("History file write err:%d", ret);
+		}
+		json_node_free (root);
+	} else {
+		glib_log_warning("History json add data err");
+	}
 
 	return TRUE;	//此处必须返回TRUE，否则不循环
 }
 
 /*********************************************************************************************
- * Description: Hash中的视频参数遍历回调函数                                                	 *
+ * Description: 增加数据到JSON中                                                 			 	 *
+ *                                                                                           *
+ * Input : HashForeach hash_foreach_call:Hash 遍历的循环函数                                   *
+ * Return:  Json 增加的节点                                              *
+ *********************************************************************************************/
+static JsonNode* add_rtcp_data_to_json(HashForeach hash_foreach_call)
+{
+	g_assert(NULL != hash_foreach_call);
+
+	JsonNode 	  *root= NULL;
+	JsonBuilder *builder = json_builder_new ();
+	if (NULL == builder) {
+		glib_log_warning ("Build JsonBuilder err");
+		return NULL;
+	}
+
+	json_builder_begin_object(builder);
+	json_builder_set_member_name(builder, "TimeStamp");
+	//json_builder_add_int_value(builder, g_get_real_time()/1000);
+	json_builder_add_int_value(builder, g_date_time_to_unix(g_rtcp_to_file.time)*1000);
+
+	gchar *time_str = g_date_time_format(g_rtcp_to_file.time, "%Y/%m/%d %T");
+	if (NULL != time_str) {
+		json_builder_set_member_name(builder, "CurrentTime");
+		json_builder_add_string_value(builder, time_str);
+		g_free(time_str);
+	}
+	//增加变量
+	g_hash_table_foreach(g_hash_video_info,	hash_foreach_call, builder);
+	json_builder_end_object(builder);
+
+	root = json_builder_get_root(builder);	/* 释放返回的值json_node_unref()。 */
+	if (NULL == root) {
+		g_object_unref (builder);
+		return NULL;
+	}
+	g_object_unref (builder);
+	return root;
+}
+
+/*********************************************************************************************
+ * Description: Hash中的视频实时参数遍历回调函数                                                	 *
  *                                                                                           *
  * Input : 	gpointer key：Hash 的key值
  * 			gpointer value：Hash 的Vlaue
  * 			gpointer user_data：回调传入的参数                                                 *
  * Return:  无                                                                               *
  *********************************************************************************************/
-static void hash_tab_foreach_call(gpointer key, gpointer value, gpointer user_data)
+static void hash_tab_foreach_runtime_call(gpointer key, gpointer value, gpointer user_data)
+{
+	guint i = 0;
+	JsonBuilder *builder = (JsonBuilder *)user_data;
+	VideoInfo *info = (VideoInfo *)value;
+	if (NULL == builder || NULL == info) {
+		glib_log_warning("value is NULL");
+		return;
+	}
+	glib_log_debug("key:%s", (gchar*)key);
+
+	for (i = 0; NULL != value && i < RTCP_MAX_NUM; i++) {
+		if (TRUE != g_rtcp_parameter[i].write_history_flage) {
+			continue;
+		}
+		json_builder_set_member_name(builder, g_rtcp_parameter[i].key);
+		switch (g_rtcp_parameter[i].value_type) {
+		 case eBollean: {
+			 json_builder_add_boolean_value(builder, info->pipe->RtcpParseValue[i].value_bool);
+		  } break;
+		  case eInt: {
+			  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_int);
+		  } break;
+		  case eUint: {
+			  if (g_rtcp_parameter[i].id == eSentRbJitter) {
+				  gint jitter = (0 != info->pipe->RtcpParseValue[eClockRate].value_int)? \
+						  info->pipe->RtcpParseValue[i].value_uint/info->pipe->RtcpParseValue[eClockRate].value_int : 0;
+				  json_builder_add_int_value(builder, jitter);
+			  } else {
+				  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_uint);
+			  }
+
+		  } break;
+		  case eInt64: {
+			  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_int64);
+		  } break;
+		  case eUint64: {
+			  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_uint64);
+		  } break;
+		}
+	}
+	return;
+}
+
+/*********************************************************************************************
+ * Description: Hash中的视频历史参数遍历回调函数                                                	 *
+ *                                                                                           *
+ * Input : 	gpointer key：Hash 的key值
+ * 			gpointer value：Hash 的Vlaue
+ * 			gpointer user_data：回调传入的参数                                                 *
+ * Return:  无                                                                               *
+ *********************************************************************************************/
+static void hash_tab_foreach_history_call(gpointer key, gpointer value, gpointer user_data)
 {
 	guint i = 0;
 	JsonBuilder *builder = (JsonBuilder *)user_data;
 	VideoInfo *info = (VideoInfo *)value;
 
+	if (NULL == builder || NULL == info) {
+		glib_log_warning("value is NULL");
+		return;
+	}
 	glib_log_debug("key:%s", (gchar*)key);
 
 	for (i = 0; NULL != value && i < RTCP_MAX_NUM; i++) {
@@ -477,7 +589,6 @@ static void hash_tab_foreach_call(gpointer key, gpointer value, gpointer user_da
 			  } else {
 				  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_uint);
 			  }
-
 		  } break;
 		  case eInt64: {
 			  json_builder_add_int_value(builder, info->pipe->RtcpParseValue[i].value_int64);

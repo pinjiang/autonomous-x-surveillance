@@ -66,6 +66,7 @@ typedef struct {
   // GIOStream *raw_server;
 } AppContext;
 
-SoupServer* start_server(const int port, const char *tls_cert_file, const char *tls_key_file, const char *task_name, AppContext *app);
+
+SoupServer* start_server(AppOption *opt, AppContext *app);
 void stop_server(SoupServer* server);
 #endif

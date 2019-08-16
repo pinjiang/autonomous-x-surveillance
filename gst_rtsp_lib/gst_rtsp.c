@@ -10,30 +10,56 @@
 
 //外部使用参数
 RtcpParseInfo g_rtcp_parameter[RTCP_MAX_NUM] = {
-//		{"ssrc",			 	eUint, 1.0},
-//		{"received-bye",		eBollean, 1.0},
-		{eClockRate,	 "clock-rate", 			eInt, 1.0},
-//		{"octets-received", 	eUint64, 1.0},
-//		{"packets-received", 	eUint64, 1.0},
-		{eBitrate,		"bitrate", 			eUint64, 1.0},
-//		{"packets-lost", 		eInt, 1.0},
-//		{"jitter", 				eUint, 1.0},
-//		{"sent-pli-count", 		eUint, 1.0},
-//		{"recv-pli-count", 		eUint, 1.0},
-//		{"sent-fir-count", 		eUint, 1.0},
-//		{"recv-fir-count", 		eUint, 1.0},
+		{eSSRC, 			"ssrc",			 		eUint, 1.0, FALSE},
+		{eRECEIVED_BYE,	"received-bye",			eBollean, 1.0, FALSE},
+		{eClockRate,	 	"clock-rate", 			eInt, 1.0, TRUE},
+		{eOCTETS_RECVIVED,"octets-received", 		eUint64, 1.0, FALSE},
+		{ePACKETS_RECEIVED,"packets-received", 	eUint64, 1.0, FALSE},
+		{eBitrate,		"bitrate", 				eUint64, 1.0, TRUE},
+		{ePACKETS_LOST,	"packets-lost", 		eInt, 1.0, FALSE},
+		{eJITTER,			"jitter", 				eUint, 1.0, FALSE},
+		{eSENT_PLI_COUNT,	"sent-pli-count", 		eUint, 1.0, FALSE},
+		{eRECV_PLI_COUNT,	"recv-pli-count", 		eUint, 1.0, FALSE},
+		{eSENT_FIR_COUNT,	"sent-fir-count", 		eUint, 1.0, FALSE},
+		{eRECV_FIR_COUNT,	"recv-fir-count", 		eUint, 1.0, FALSE},
 
-//		{"sr-ntptime", 			eUint, 1.0},
-//		{"sr-rtptime",			eUint, 1.0},
-//		{"sr-octet-count",		eUint, 1.0},
-//		{"sr-packet-count",		eUint, 1.0},
+		{eSR_NTPTIME,		"sr-ntptime", 			eUint, 1.0, FALSE},
+		{eSR_RTPTIME,		"sr-rtptime",			eUint, 1.0, FALSE},
+		{eSR_OCTET_COUNT,	"sr-octet-count",		eUint, 1.0, FALSE},
+		{eSR_PACKET_COUNT,"sr-packet-count",		eUint, 1.0, FALSE},
 
-//		{"sent-rb-fractionlost",eUint, 1.0},
-		{eSentRbPacketsLost, "sent-rb-packetslost",	eInt, 1.0},
-//		{"sent-rb-exthighestseq",eUint, 1.0},
-		{eSentRbJitter, 	 "sent-rb-jitter",		eUint, 1000.0},
-//		{"sent-rb-lsr",			eUint, 1.0},
-//		{"sent-rb-dlsr",		eUint, 1.0}
+		{eSENT_RB_FRACTIONLOST,	"sent-rb-fractionlost",	eUint, 1.0, FALSE},
+		{eSentRbPacketsLost, 		"sent-rb-packetslost",	eInt, 1.0, TRUE},
+		{eSENT_RB_EXTHIGHESTSEQ,	"sent-rb-exthighestseq",eUint, 1.0, FALSE},
+		{eSentRbJitter, 	 		"sent-rb-jitter",		eUint, 1000.0, TRUE},
+		{eSENT_RB_LSR,			"sent-rb-lsr",			eUint, 1.0, FALSE},
+		{eSENT_RB_DLSR,			"sent-rb-dlsr",			eUint, 1.0, FALSE}
+
+
+//		[eSSRC] 				= {eSSRC, 			"ssrc",			 		eUint, 1.0, FALSE},
+//		[eRECEIVED_BYE] 		= {eRECEIVED_BYE,	"received-bye",			eBollean, 1.0, FALSE},
+//		[eClockRate] 			= {eClockRate,	 	"clock-rate", 			eInt, 1.0, TRUE},
+//		[eOCTETS_RECVIVED] 		= {eOCTETS_RECVIVED,"octets-received", 		eUint64, 1.0, FALSE},
+//		[ePACKETS_RECEIVED] 	= {ePACKETS_RECEIVED,"packets-received", 	eUint64, 1.0, FALSE},
+//		[eBitrate] 				= {eBitrate,		"bitrate", 				eUint64, 1.0, TRUE},
+//		[ePACKETS_LOST] 		= {ePACKETS_LOST,	"packets-lost", 		eInt, 1.0, FALSE},
+//		[eJITTER] 				= {eJITTER,			"jitter", 				eUint, 1.0, FALSE},
+//		[eSENT_PLI_COUNT]		= {eSENT_PLI_COUNT,	"sent-pli-count", 		eUint, 1.0, FALSE},
+//		[eRECV_PLI_COUNT] 		= {eRECV_PLI_COUNT,	"recv-pli-count", 		eUint, 1.0, FALSE},
+//		[eSENT_FIR_COUNT] 		= {eSENT_FIR_COUNT,	"sent-fir-count", 		eUint, 1.0, FALSE},
+//		[eRECV_FIR_COUNT] 		= {eRECV_FIR_COUNT,	"recv-fir-count", 		eUint, 1.0, FALSE},
+//
+//		[eSR_NTPTIME] 			= {eSR_NTPTIME,		"sr-ntptime", 			eUint, 1.0, FALSE},
+//		[eSR_RTPTIME] 			= {eSR_RTPTIME,		"sr-rtptime",			eUint, 1.0, FALSE},
+//		[eSR_OCTET_COUNT] 		= {eSR_OCTET_COUNT,	"sr-octet-count",		eUint, 1.0, FALSE},
+//		[eSR_PACKET_COUNT] 		= {eSR_PACKET_COUNT,"sr-packet-count",		eUint, 1.0, FALSE},
+//
+//		[eSENT_RB_FRACTIONLOST] = {eSENT_RB_FRACTIONLOST,	"sent-rb-fractionlost",	eUint, 1.0, FALSE},
+//		[eSentRbPacketsLost] 	= {eSentRbPacketsLost, 		"sent-rb-packetslost",	eInt, 1.0, TRUE},
+//		[eSENT_RB_EXTHIGHESTSEQ]= {eSENT_RB_EXTHIGHESTSEQ,	"sent-rb-exthighestseq",eUint, 1.0, FALSE},
+//		[eSentRbJitter] 		= {eSentRbJitter, 	 		"sent-rb-jitter",		eUint, 1000.0, TRUE},
+//		[eSENT_RB_LSR] 			= {eSENT_RB_LSR,			"sent-rb-lsr",			eUint, 1.0, FALSE},
+//		[eSENT_RB_DLSR] 		= {eSENT_RB_DLSR,			"sent-rb-dlsr",			eUint, 1.0, FALSE}
 };
 
 /*********************************************************************************************

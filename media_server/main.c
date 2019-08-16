@@ -5,6 +5,7 @@
 #include <string.h>
 #include <pthread.h>
 
+#include "sys.h"
 #include "utils.h"
 #include "media_server.h"
 enum {
@@ -21,23 +22,8 @@ enum {
 	eMAIN_START_SERVER_ERR = -21,
 };
 /******************************************************/
-#define	MAJOR_VERSION	1
-#define MIN_VERSION		0
-#define REVISION		0
-/******************************************************/
-/* 命令行参数缓冲区 */
-#define TASK_NAME_MAX_LEN	64
-typedef struct {
-  const gchar *verbose;
-  gint  listen_port;
-  gboolean disable_ssl;
-  const char *tls_cert_file;
-  const char *tls_key_file;
-  const char *task_name;
-} AppOption;
-/******************************************************/
 static AppContext g_app = {0};
-static AppOption  g_opt = {NULL, 20000, FALSE, NULL, NULL, "test"};
+static AppOption  g_opt = {NULL, 20000, FALSE, NULL, NULL, "test", "../line_gauge/data"};
 static GOptionEntry g_entries[] = {
   { "verbose",      'v', 0, G_OPTION_ARG_STRING, &g_opt.verbose,      "Be verbose", NULL },
   { "disable-ssl",  0,   0, G_OPTION_ARG_NONE,   &g_opt.disable_ssl,  "Disable ssl", NULL },
@@ -45,6 +31,7 @@ static GOptionEntry g_entries[] = {
   { "key-file",     'k', 0, G_OPTION_ARG_STRING, &g_opt.tls_key_file, "Use FILE as the TLS private key file", "FILE" },
   { "port",         'p', 0, G_OPTION_ARG_INT,    &g_opt.listen_port,  "Port to listen on", NULL },
   { "task",         't', 0, G_OPTION_ARG_STRING, &g_opt.task_name,    "Task name of test", NULL },
+  { "result_file_path",'f', 0, G_OPTION_ARG_STRING, &g_opt.result_file_path,"Result file path", "Path" },
   { NULL }
 };
 
@@ -86,8 +73,7 @@ int main(int argc, char *argv[]) {
 		return eMAIN_LOOP_CREATE_ERR;
 	}
 	/* Start Web Server for Web Page Interaction */
-	g_app.soup_server = start_server(g_opt.listen_port, g_opt.tls_cert_file, g_opt.tls_key_file, \
-			g_opt.task_name, &g_app);
+	g_app.soup_server = start_server(&g_opt, &g_app);
 	if (NULL == g_app.soup_server) {
 		glib_log_warning("Server start err");
 		g_main_loop_unref (g_app.loop);

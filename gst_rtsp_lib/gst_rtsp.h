@@ -5,13 +5,18 @@
 
 /*********************************************/
 //RTCP 控制参数获取
-#define RTCP_MAX_NUM		4
+#define RTCP_MAX_NUM		22
 #define RTCP_LEY_LEN_MAX	64
 typedef enum {
 	eInvalid = -1, eBollean, eInt, eUint, eInt64, eUint64
 }RtcpValueType;
 typedef enum {
-	eTypeInvalid = -1, eClockRate, eBitrate, eSentRbPacketsLost, eSentRbJitter
+	eTypeInvalid = -1,
+	eSSRC, eRECEIVED_BYE, eClockRate, eOCTETS_RECVIVED, ePACKETS_RECEIVED,
+	ePACKETS_LOST,eJITTER,eSENT_PLI_COUNT,eRECV_PLI_COUNT,eSENT_FIR_COUNT,
+	eRECV_FIR_COUNT,eSR_NTPTIME,eSR_RTPTIME,eSR_OCTET_COUNT,eSR_PACKET_COUNT,
+	eSENT_RB_FRACTIONLOST,eBitrate, eSENT_RB_EXTHIGHESTSEQ, eSentRbPacketsLost, eSentRbJitter,
+	eSENT_RB_LSR,eSENT_RB_DLSR,
 }RtcpType;
 typedef union {
 	gboolean	value_bool;
@@ -25,6 +30,7 @@ typedef struct {
 	gchar 			key[RTCP_LEY_LEN_MAX];
 	RtcpValueType	value_type;	//数值类型
 	gdouble			fk;			//数值系数
+	gboolean		write_history_flage;//是否写入到历史数据
 }RtcpParseInfo;
 /*********************************************/
 typedef struct {
