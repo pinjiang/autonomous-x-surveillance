@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Bootstrap 4, from LayoutIt!</title>
+    <title>Wireless Tele-Remote X Control Panel</title>
 
-    <meta name="description" content="Source code generated using layoutit.com">
-    <meta name="author" content="LayoutIt!">
+    <meta name="description" content="Tele-Remote">
+    <meta name="author" content="Jiang Pin, Huaiwei Co. jiangpin1@huawei.com">
 
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="js/plugins/bootstrap-treeview/bootstrap-treeview.min.css">
     <link rel="stylesheet" type="text/css" href="js/plugins/bootstrap-dialog/bootstrap-dialog.min.css">
-    <!-- <link href="css/style.css" rel="stylesheet"> -->
+    <link rel="stylesheet" type="text/css" href="css/style.css">
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script type="text/javascript" src="js/plugins/bootstrap-treeview/bootstrap-treeview.js"></script>
@@ -25,7 +25,7 @@
       <div class="container-fluid">
           <div class="row">
             <div class="col-md-12">
-                <div class="tabbable" id="tabs-53403">
+                <div class="tabbable" id="tabs">
                   <ul class="nav nav-tabs">
                 <li class="nav-item">
                   <a class="nav-link active show" href="#tab1" data-toggle="tab">设备管理</a>
@@ -59,7 +59,7 @@
                           </div>
                       </div>
                       <div class="col-md-8">
-                          <div class="panel panel-primary ">
+                        <div class="panel panel-primary ">
                             <div class="panel-heading">
                               <h3 class="panel-title">编辑区</h3>
                             </div>
@@ -95,7 +95,7 @@
 
                                 <div style="margin-top: 10px;">
                                   <input id="Edit" class="btn btn-primary" type="button" value="确定" />
-                                  <input id="Edit_cancel" class="btn btn-default" type="button" style="margin-left:80px;display:none;" value="取消" />
+                                  <input id="Edit_cancel" class="btn btn-default" type="button" value="取消" />
                                 </div>
                               </div>
                             </div>  <!--编辑操作权限 end-->
@@ -103,8 +103,8 @@
                       </div> <!-- <div class="col-md-8"> -->
                   </div> <!--<div class="row"> -->
                   <div>
-                          <!--弹出框 新增权限 start-->
-                          <div class="modal fade" id="addOperation-dialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+                    <!--弹出框 新增权限 start-->
+                    <div class="modal fade" id="addOperation-dialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
                             <div class="modal-dialog" role="document">
                       
                               <div class="modal-content radius_5">
@@ -121,15 +121,15 @@
                                       </div>
                                       <div class="input-group margin-t-5">
                                           <span class="input-group-addon">类型:</span>
-                                          <input id="addPassword" type="text" class="form-control" />
+                                          <input id="addType" type="text" class="form-control" />
                                       </div>
                                       <div class="input-group margin-t-5">
                                           <span class="input-group-addon">网络地址:</span>
-                                          <input id="addAddress" type="text" class="form-control" />
+                                          <input id="addUrl" type="text" class="form-control" />
                                       </div>
                                       <div class="input-group margin-t-5">
                                           <span class="input-group-addon">用户名:</span>
-                                          <input id="addId" type="text" class="form-control" />
+                                          <input id="addUsername" type="text" class="form-control" />
                                       </div>
                                       <div class="input-group margin-t-5">
                                           <span class="input-group-addon">密码:</span>
@@ -144,15 +144,15 @@
                                 </div>
                               </div>
                             </div>
-                          </div>
-                          <!--弹出框 新增权限 end-->   
+                    </div>
+                    <!--弹出框 新增权限 end-->   
                   </div>
                 </div>   <!-- tab1 -->
                 </div>
                 <div class="tab-pane" id="tab2">
                   <div class="row clearfix">
-                        <div class="col-md-7 column">
-                          <table class="table">
+                        <div class="col-md-6 column" >
+                          <table class="table" id="device-tbl">
                             <thead>
                               <tr>
                                 <th>
@@ -170,14 +170,7 @@
                               </tr>
                             </thead>
                             <tbody>
-                              <tr id=“table-content”>
-                                <td>
-                                  <div class="custom-control custom-radio">
-                                    <input type="radio" class="custom-control-input" id="defaultUnchecked" name="defaultExampleRadios">
-                                    <label class="custom-control-label" for="defaultUnchecked">Default unchecked</label>
-                                  </div>
-                                </td>
-                              </tr>
+                                <tr></tr>
                             </tbody>
                           </table>
                         </div>
@@ -187,6 +180,26 @@
                         </div>
                   </div>
                   <div class="row clearfix" data-columns="" id="cameras">
+                  </div>                  
+                  <!-- Modal -->
+                  <div class="modal fade" id="connectModal" tabindex="-1" role="dialog" aria-labelledby="connectModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="connectModalLabel">建立服务器连接</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                          当前与视频流媒体客户端连接断开，是否尝试连接？
+                        </div>
+                        <div class="modal-footer">
+                            <button id="Connect" type="button" class="btn btn-primary" data-dismiss="modal">是</button>
+                          <button type="button" class="btn btn-secondary" data-dismiss="modal">否</button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>   <!-- tab-pane" id="tab2" -->
                 <div class="tab-pane" id="tab3">

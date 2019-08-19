@@ -32,6 +32,16 @@ gint get_process_name(GString *name);
 #else
 	#define	CLOG_END
 #endif
+
+#if WIN32
+
+#define glib_log_debug g_debug
+#define glib_log_info g_info
+#define glib_log_msg g_message
+#define glib_log_warning g_warning
+#define glib_log_error g_error
+
+#else 
 #  define glib_log_debug(fmt, ...) \
 		g_debug("D"CLOG_PREFIX fmt CLOG_END,\
 				__FILE__,__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
@@ -47,6 +57,7 @@ gint get_process_name(GString *name);
 #  define glib_log_error(fmt, ...) \
 		g_error("E"CLOG_PREFIX fmt CLOG_END,\
 				__FILE__,__FUNCTION__, __LINE__ , ##__VA_ARGS__ )
+#endif
 
 
 //定义的返回结果

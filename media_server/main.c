@@ -3,7 +3,6 @@
 #include <gst/gst.h>
 #include <gobject/gvaluetypes.h>
 #include <string.h>
-#include <pthread.h>
 
 #include "sys.h"
 #include "utils.h"
@@ -64,7 +63,9 @@ int main(int argc, char *argv[]) {
 	/* 2.开始启动服务 */
 	glib_log_info("Media Server Started");
 	signal (SIGINT, quit);
-	signal (SIGKILL, quit);
+#if not WIN32
+	signal(SIGKILL, quit);
+#endif
 	signal (SIGTERM, quit);
 
 	g_app.loop = g_main_loop_new (NULL, TRUE);

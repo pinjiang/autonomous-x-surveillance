@@ -2,11 +2,19 @@ project(gst-viewer C)
 
 set(CMAKE_BUILD_TYPE DEBUG)
 # DEBUG/MINSIZEREL/RELWITHDEBINFO/RELEASE
-set(CMAKE_C_FLAGS "-Werror -Wextra -DG_LOG_DOMAIN=\\\"media_server\\\"")
+if(WIN32)
+set(CMAKE_C_FLAGS "-DWIN32 -DG_LOG_DOMAIN=\\\"gst_rtsp_lib\\\"")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g -O0")
 set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS}")
+else(WIN32)
+set(CMAKE_C_FLAGS "-Werror -Wextra -DG_LOG_DOMAIN=\\\"gst_rtsp_lib\\\"")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g -O0")
+set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS}")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS}")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS}")
+endif(WIN32)
 
 # -Wno-unused-parameter -Wno-ignored-qualifiers -Werror=missing-field-initializers"
 
@@ -23,6 +31,7 @@ target_sources(gst-viewer
         main.c
         media_server.c
         ${CMAKE_CURRENT_LIST_DIR}/../utils/utils.c
+		${CMAKE_CURRENT_LIST_DIR}/../utils/utils.h
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${JSON_GLIB_INCLUDE_DIRS} ${LIBSOUP_INCLUDE_DIRS})

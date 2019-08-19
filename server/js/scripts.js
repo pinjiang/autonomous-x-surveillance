@@ -7,44 +7,39 @@ var tree = [
   {
     text: "推土机",
     id:"3",
-    type : "machinery",
+    type : "主设备",
     nodes: [
       {
         text   : "前视",
-        type   : "camera",
-        url    : "http://122.112.211.178:18554/test",
+        type   : "摄像机",
+        url    : "rtsp://122.112.211.178:18554",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "左视",
-        type   : "camera",
-        url    : "http://122.112.211.178:18554/test",
+        type   : "摄像机",
+        url    : "rtsp://122.112.211.178:18554",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "右视",
-        type   : "camera",
-        url    : "http://122.112.211.178:18554/test",
+        type   : "摄像机",
+        url    : "rtsp://122.112.211.178:18554",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "后视",
-        type   : "camera",
-        url    : "http://122.112.211.178:18554/test",
+        type   : "摄像机",
+        url    : "rtsp://122.112.211.178:18554",
         user_id: "",
         user_pw: ""
       }
     ]
   },
-  {
-    text : "轮胎吊",
-    id   : "2",
-    type : "machinery"
-  }, 
-  {
+/*{
     text : "挖机",
     id   : "3",
     type : "machinery",
@@ -52,108 +47,94 @@ var tree = [
       {
         text   : "前视",
         type   : "camera",
-        url    : "http://127.0.0.1:7001",
+        url    : "rtsp://127.0.0.1:7001",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "左视",
         type   : "camera",
-        url    : "http://127.0.0.1:7002",
+        url    : "rtsp://127.0.0.1:7002",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "右视",
         type   : "camera",
-        url    : "http://127.0.0.1:7003",
+        url    : "rtsp://127.0.0.1:7003",
         user_id: "",
         user_pw: ""
       },
       {
         text   : "后视",
         type   : "camera",
-        url    : "http://127.0.0.1:7004",
+        url    : "rtsp://127.0.0.1:7004",
         user_id: "",
         user_pw: ""
       }
     ]
-  }, 
+  }, */
 ];  
 
-var td_template = "<td> <div class=\"custom-control custom-radio\"> \
-<input type=\"radio\" class=\"custom-control-input\" id=\"defaultUnchecked\" name=\"defaultExampleRadios\"> \
-<label class=\"custom-control-label\" for=\"defaultUnchecked\">Default unchecked</label> \
-</div> </td>";
-
-var block_template = "<div class=\"col-md-4 column\" id=\"camera_00\"> \
-<a class=\"btn btn-info\" role=\"button\" data-toggle=\"collapse\" href=\"#config_00\" aria-expanded=\"false\" aria-controls=\"collapseExample\"> \
+var block_template = "<div class=\"col-md-4 column\" id=\"camera_00\" align=\"center\"> <p> \
+<h4 id=\"heading_00\"></h4> \
+<a class=\"btn btn-info\" role=\"button\" id=\"config_00\" data-toggle=\"popover\" data-placement=\"bottom\"> \
     详细配置 \
 </a> \
-<a class=\"btn btn-info\" role=\"button\" data-toggle=\"collapse\" href=\"#stats_00\" aria-expanded=\"false\" aria-controls=\"collapseExample\"> \
+<a class=\"btn btn-info\" role=\"button\" id=\"stats_00\" data-toggle=\"popover\" data-placement=\"bottom\"> \
     详细统计量 \
 </a> \
 <button class=\"btn btn-primary\" onclick=\"openVideo(this);\">打开</button> \
 <button class=\"btn btn-primary\" onclick=\"closeVideo(this);\">关闭</button> \
-<div class=\"collapse\" id=\"config_00\"> \
-  <p><label>名称:</label> <input type=\"text\" id=\"name_00\"/> </p>\
-  <p>网络地址:</label> <input type=\"text\" id=\"url_00\"/> </p>\
-  <p>用户名:</label> <input type=\"text\" id=\"username_00\"/> </p>\
-  <p>密码:</label> <input type=\"text\" id=\"password_00\"/> </p>\
-</div> \
-<div class=\"collapse\" id=\"stats_00\"> \
-  <table class=\"table table-bordered\"> \
-        <thead> \
-          <tr> \
-            <th>字段</th> \
-            <th>数值</th> \
-          </tr> \
-        </thead> \
-        <tbody> \
-          <tr> \
-            <th scope=\"row\" id=\"codecs_encryption\">codecs/encryption</th> \
-            <td id=\"codecs_encryption\"></td> \
-          </tr> \
-          <tr> \
-            <th scope=\"row\" id=\"frameHeightWidthReceived\">frame resolution</th> \
-            <td id=\"frameHeightWidthReceived_1\"></td> \
-          </tr> \
-          <tr>  \
-            <th scope=\"row\" id=\"frameRateOutput\">frame rate(fps)</th> \
-            <td id=\"frameRateOutput\"></td> \
-          </tr> \
-          <tr>  \
-            <th scope=\"row\" id=\"bytesReceived\">bytes received(second/total)</th> \
-            <td id=\"bytesReceived\"></td> \
-          </tr> \
-          <tr>  \
-            <th scope=\"row\" id=\"packetsReceivedLost\">packets lost(%)</th> \
-            <td id=\"packetsReceivedLost\"></td> \
-          </tr> \
-          <tr>  \
-            <th scope=\"row\" id=\"latency\">latency(ms)</th> \
-            <td id=\"latency\"></td> \
-          </tr> \
-          <tr>  \
-            <th scope=\"row\" id=\"jitterbufferms\">jitter buffer(ms)</th> \
-            <td id=\"jitterbufferms\"></td> \
-          </tr> \
-           <tr> \
-            <th scope=\"row\" id=\"availreceivebw\">availreceivebw(bps)</th> \
-            <td id=\"availreceivebw\"></td> \
-          </tr> \
-          </tbody> \
-  </table> \
-</div> \
+</p> \
 </div>";
+
+var messages ="";
+/**
+ * Sends the value of the text input to the server
+ */
+/* function send(){
+  var text = document.getElementById("messageinput").value;
+  webSocket.send(text);
+} */
+
+function clone(obj) {
+  if (null == obj || "object" != typeof obj) return obj;
+  var copy = obj.constructor();
+  for (var attr in obj) {
+      if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+  }
+  return copy;
+}
 
 //获取树数据
 function getTree(){
   return tree;             
 }
 
-function getNode(){
-  
+function existNode(obj, text){
+  var node = null;
+  $.each(obj, function (index, value) { 
+    if( value.text == text) {
+      console.log(value.text);
+      node = value;
+      return false;
+    }
+    if (typeof value.nodes != undefined ) {
+      node = existNode(value.nodes, text);
+    }
+    return true;
+  })
+  return node; 
+}
+
+function updateNode(obj, text, newnode) {
+  var node = existNode(obj, text);
+  if( node ) {
+    for (var attr in node) {
+      if (newnode.hasOwnProperty(attr)) node[attr] = newnode[attr];
+    }
+  }
 }
                     
 function openSocket(){
@@ -177,6 +158,10 @@ function openSocket(){
  
    writeResponse(event.data);
   };
+
+  webSocket.onerror = function(event) {
+    alert("视频流媒体客户端连接失败", event);
+  };
  
   webSocket.onmessage = function(event){
     writeResponse(event.data);
@@ -195,19 +180,21 @@ function closeSocket(){
  * ask background gstreamer media server to open a video
  */
 function openVideo(obj) {
+
+  if (webSocket == undefined || webSocket.readyState == WebSocket.CLOSED ) {
+    $('#connectModal').modal()
+    return;
+  } 
+
   var element = console.log($(obj).parent());
   var id = $(obj).parent().attr("id").split("_")[1];
 
-  // console.log(id);
-  // console.log("name_" + id);
-  // console.log($("#name_" + id));
-  // console.log($("#url_" + id));
-  // console.log($("#username_" + id));
-  // console.log($("#password_" + id));
-  var name = $("#name_" + id).val();
-  var url  = $("#url_" + id).val();
-  var user_id = $("#username_" + id).val();
-  var user_pw = $("#password_" + id).val();
+  var data_content_dom =  $.parseHTML($("#config_" + id).attr("data-content"));
+
+  var name = $("#name_" + id, data_content_dom).text();
+  var url = $("#url_" + id, data_content_dom).text();
+  var user_id = $("#username_" + id, data_content_dom).text();
+  var user_pw = $("#password_" + id, data_content_dom).text(); 
 
 	var jsonObj = {
     "type"   : "play",
@@ -224,6 +211,12 @@ function openVideo(obj) {
  * ask background gstreamer media server to close a video
  */
 function closeVideo(obj) {
+
+  if (webSocket == undefined) {
+    $('#connectModal').modal()
+    return;
+  }
+
   var element = console.log($(obj).parent());
   var id = $(obj).parent().attr("id").split("_")[1];
 
@@ -237,7 +230,7 @@ function closeVideo(obj) {
 }
  
 function writeResponse(text){
-  messages.innerHTML += "<br/>" + text;
+  messages += "<br/>" + text;
 }
 
 function nextElement(element) {
@@ -248,16 +241,20 @@ function nextElement(element) {
   if(id<10) id="0"+id;
 
   $(element).attr("id", $(element).attr("id").split("_")[0] + "_" + id);
-  // var field = $('input', $(element)).attr("id");
-  // $('input', $(element)).attr("id", field.split("_")[0]+"_"+id);
 
-  $('input', $(element)).each(function(i, obj) {
+  $('h4', $(element)).each(function(i, obj) {
     $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
     //test
   });
 
   $('a', $(element)).each(function(i, obj) {
-    $(obj).attr("href", $(obj).attr("href").split("_")[0]+"_"+id);
+    $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
+    //test
+  });
+
+  /* 
+  $('input', $(element)).each(function(i, obj) {
+    $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
     //test
   });
 
@@ -265,175 +262,206 @@ function nextElement(element) {
     $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
     //test
   });
+  */
 
-  /* var field = $('.collapse', $(element)).attr("id");
-  console.log(field);
-  $('a', $(element)).attr("href", field.split("_")[0]+"_"+id);
-  $('.collapse', $(element)).attr("id", field.split("_")[0]+"_"+id); */
-  /* TBD Bug: stats is renamed to config */
-
-  // $("#cameras").append(newElement);
 }
 
 function updateElement(element, item) {
   var id = $(element).attr("id").split("_")[1];
-
+  $("#heading_" + id, element).text(item.text);
   $("#name_" + id, element).val(item.text);
   $("#url_" + id,  element).val(item.url);
   $("#username_" + id, element).val(item.user_id);
   $("#password_" + id, element).val(item.user_pw);
+
+  var newconfig = "<form><ul><li id=\"name_" + id + "\"><span aria-hidden='true' class='icon_globe'></span>&nbsp;<font>名称:</font>"+ item.text +"</li>" +
+  "<li id=\"url_"+ id +"\"><span aria-hidden='true' class='icon_search_alt'></span>&nbsp;<font>网络地址:</font>"  + item.url + "</li>" +
+  "<li id=\"username_"+ id + "\"><span aria-hidden='true' class='icon_pens_alt'></span>&nbsp;<font>用户名:</font>" + item.user_id + "</li>" +
+  "<li id=\"password_"+ id + "\"><span aria-hidden='true' class='icon_pens_alt'></span>&nbsp;<font>密码:</font>" + item.user_pw + "</li>" +
+  "</form>";
+
+  var newstats = "<form><input id" + id + "='btn' type='button' value='跟踪' onclick='test()'/></form>"
+
+  $('#config_' + id, element).attr("data-content", newconfig);
+  $('#stats_' + id, element).attr("data-content", newstats);
 }
 
 function appendElement(item) {
   var newElement = $.parseHTML(block_template);
   nextElement(newElement);
   updateElement(newElement, item);
-
   $("#cameras").append(newElement);
 }
 
-function updateTd() {
-
-}
-
 function appendTable(item) {
-  var new_td = $.parseHTML(td_template);
-  updateTd(new_td, item);
-  console.log("append once");
-  $("#table-content").append(new_td);
+  var new_tr = "<tr> <td> <div class=\"custom-control custom-radio\"> \
+  <input type=\"radio\" class=\"custom-control-input\" name=\"defaultExampleRadios\"> \
+  </div> </td> <td>" + item.text +"</td>  <td> 2019/09/01 10:00 </td> <td> 在线 </td>  </tr>";
+  var new_tr_dom = $.parseHTML(new_tr);
+  $('#device-tbl tbody').append(new_tr_dom);
 }
 
+// 模拟动态加载标题(真实情况可能会跟后台进行ajax交互)
+function title() {
+  return '详细信息';
+}
+ 
 $(function(){
   onLoad();
   BindEvent();
-   //页面加载
+
+  //页面加载
   function onLoad()
   {
-       //渲染树
-      $('#left-tree').treeview({
-         data: getTree(),
-         levels: 1,
-         onNodeSelected:function(event, node){
-           if( node.type == "machinery") {
-             // To hide it
-             $("#editUrlDiv").addClass('hidden');
-             $("#editUsernameDiv").addClass('hidden');
-             $("#editPasswordDiv").addClass('hidden');
-           } 
-           else if( node.type == "camera") {
-             // To show it
-             $("#editUrlDiv").removeClass('hidden');
-             $("#editUsernameDiv").removeClass('hidden');
-             $("#editPasswordDiv").removeClass('hidden');
+    //渲染树
+    $('#left-tree').treeview({
+      data: getTree(),
+      levels: 1,
+      onNodeSelected:function(event, node){
+        if( node.type == "主设备") {
+          // To hide it
+          $("#editUrlDiv").addClass('hidden');
+          $("#editUsernameDiv").addClass('hidden');
+          $("#editPasswordDiv").addClass('hidden');
+          $("#editType").val(node.type);
+          $('#editName').val(node.text);
+        } 
+        else if( node.type == "摄像机") {
+          // To show it
+          $("#editUrlDiv").removeClass('hidden');
+          $("#editUsernameDiv").removeClass('hidden');
+          $("#editPasswordDiv").removeClass('hidden');
 
-             $('#editName').val(node.text);
-             $('#editUrl').val(node.url);
-             $('#editUsername').val(node.user_id);
-             $('#editPassword').val(node.user_pw);
-           }
-         },
-         showCheckbox:false//是否显示多选
-      }); 
-      
-      // 更新
-      jQuery.each(getTree(), (index, item) => {
-           console.log(index, item);
-           appendTable(item);
-      });
-
-      // 更新
-      jQuery.each(getTree()[0].nodes, (index, item) => {
-          appendElement(item);
-      });
+          $('#editName').val(node.text);
+          $("#editType").val(node.type);
+          $('#editUrl').val(node.url);
+          $('#editUsername').val(node.user_id);
+          $('#editPassword').val(node.user_pw);
+        }
+      },
+      showCheckbox:false//是否显示多选
+    }); 
   }
   
   //事件注册
   function BindEvent()
   {
-      //保存-新增
-      $("#Save").click(function () {
-          $('#addOperation-dialog').modal('hide')
-                    //静态添加节点
-                    var parentNode = $('#left-tree').treeview('getSelected');
-                    var node = {
-                        text: $('#addName').val()
-                    };
-                    $('#left-tree').treeview('addNode', [node, parentNode]);
-                });
-      }
-       //保存-编辑
-      $('#Edit').click(function(){
-         var node = $('#left-tree').treeview('getSelected');
-         var newNode={
-         text:$('#editName').val()
-        };
-        $('#left-tree').treeview('updateNode', [ node, newNode]);
-      });
-      //显示-添加
-      $("#btnAdd").click(function(){
-         var node = $('#left-tree').treeview('getSelected');
-         if (node.length == 0) {
-           $.showMsgText('请选择节点');
-           return;
-          }
-          $('#addName').val('');
-          $('#addOperation-dialog').modal('show');
-        });
-        //显示-编辑
-        $("#btnEdit").click(function(){
-          var node=$('#left-tree').treeview('getSelected');
-          $('#editShow').show();
-        });
-        //删除
-        $("#btnDel").click(function(){
-          var node = $('#left-tree').treeview('getSelected');
-          if (node.length == 0) {
-            $.showMsgText('请选择节点');
-            return;
-          }
-          BootstrapDialog.confirm({
-                    title: '提示',
-                    message: '确定删除此节点?',
-                    size: BootstrapDialog.SIZE_SMALL,
-                    type: BootstrapDialog.TYPE_DEFAULT,
-                    closable: true,
-                    btnCancelLabel: '取消', 
-                    btnOKLabel: '确定', 
-                    callback: function (result) {
-                        if(result)
-                        {
-                            del();
-                        }
-                    }
-            });
-          function del(){
-            $('#left-tree').treeview('removeNode', [ node, { silent: true } ]);
-          }
-      });
-      $("#btnMove").click(function(){
-        $.showMsgText('更新中...');
+    $('a[href="#tab1"]').on('click', function(event){
+      //渲染树  
+    })
+  
+    $('a[href="#tab2"]').on('click', function(event){
+      $('#device-tbl tbody').empty();
+      $('#cameras').empty();
+
+      // 更新设备表格
+      jQuery.each(getTree(), (index, item) => {
+        appendTable(item);
       });
 
-      /*-----页面pannel内容区高度自适应 start-----*/
-      $(window).resize(function () {
-        setCenterHeight();
+      // 更新摄像头表格
+      jQuery.each(getTree()[0].nodes, (index, item) => {
+        appendElement(item);
       });
+
+      $("[data-toggle='popover']").popover( {
+        html : true,  
+        title: title(),  
+        delay: { show:200, hide:200 },
+      }
+      );
+    })
+    
+    //保存-新增
+    $("#Save").click(function () {
+        $('#addOperation-dialog').modal('hide')
+          //静态添加节点
+          var parentNode = $('#left-tree').treeview('getSelected');
+          var node = {
+            text: $('#addName').val(),
+            type:$('#addType').val(),
+            url:$('#addUrl').val(),
+            user_id:$('#addUsername').val(),
+            user_pw:$('#addPassword').val()
+          };
+          // parentNode.nodes.push(node);
+          $('#left-tree').treeview('addNode', [node, parentNode]);
+          getTree().find(x => x.text == parentNode[0].text).nodes.push(node);
+      });
+    }
+    //保存-编辑
+    $('#Edit').click(function(){
+      var node = $('#left-tree').treeview('getSelected');
+      var newNode={
+        text:$('#editName').val(),
+        type:$('#editType').val(),
+        url:$('#editUrl').val(),
+        user_id:$('#editUsername').val(),
+        user_pw:$('#editPassword').val()
+      };
+      $('#left-tree').treeview('updateNode', [ node, newNode]);
+      updateNode(getTree(), node[0].text, newNode);
+      $.showMsgText('保存成功');
+    });
+    //显示-添加
+    $("#btnAdd").click(function(){
+      var node = $('#left-tree').treeview('getSelected');
+      if (node.length == 0) {
+        $.showMsgText('请选择节点');
+        return;
+      }
+      $('#addName').val('');
+      $('#addOperation-dialog').modal('show');
+    });
+    //显示-编辑
+    $("#btnEdit").click(function(){
+      var node=$('#left-tree').treeview('getSelected');
+      $('#editShow').show();
+    });
+    //删除
+    $("#btnDel").click(function(){
+      var node = $('#left-tree').treeview('getSelected');
+      if (node.length == 0) {
+        $.showMsgText('请选择节点');
+        return;
+      }
+      BootstrapDialog.confirm({
+        title: '提示',
+        message: '确定删除此节点?',
+        size: BootstrapDialog.SIZE_SMALL,
+        type: BootstrapDialog.TYPE_DEFAULT,
+        closable: true,
+        btnCancelLabel: '取消', 
+        btnOKLabel: '确定', 
+        callback: function (result) {
+          if(result)
+          {
+            del();
+          }
+        }
+      });
+      function del(){
+        $('#left-tree').treeview('removeNode', [ node, { silent: true } ]);
+      }
+    });
+    $("#btnMove").click(function(){
+      $.showMsgText('更新中...');
+    });
+
+    //显示-添加
+    $("#Connect").click(function(){
+      openSocket();
+    });
+
+    /*-----页面pannel内容区高度自适应 start-----*/
+    $(window).resize(function () {
       setCenterHeight();
-      function setCenterHeight() {
-        var height = $(window).height();
-        var centerHight = height - 240;
-        $(".right_centent").height(centerHight).css("overflow", "auto");
-      }
-      /*-----页面pannel内容区高度自适应 end-----*/
+    });
+    setCenterHeight();
+    function setCenterHeight() {
+      var height = $(window).height();
+      var centerHight = height - 240;
+      $(".right_centent").height(centerHight).css("overflow", "auto");
+    }
+    /*-----页面pannel内容区高度自适应 end-----*/
 });
-
-
-
-var messages = document.getElementById("messages");
-/**
- * Sends the value of the text input to the server
- */
-function send(){
-  var text = document.getElementById("messageinput").value;
-  webSocket.send(text);
-}
