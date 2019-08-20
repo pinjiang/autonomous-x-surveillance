@@ -62,6 +62,8 @@ RtcpParseInfo g_rtcp_parameter[RTCP_MAX_NUM] = {
 //		[eSENT_RB_DLSR] 		= {eSENT_RB_DLSR,			"sent-rb-dlsr",			eUint, 1.0, FALSE}
 };
 
+void stop(RtspPipelineBundle *p_appctx);
+
 /*********************************************************************************************
  * Description: 解析获取数据帧的状态                                                 			 *
  *                                                                                           *
@@ -232,6 +234,15 @@ static void new_rtp_session_manager_callback(GstElement *src, GstElement *manage
   return;
 }
 
+static void decodebin_pad_added_handler(GstElement *object, GstPad* arg0, RtspPipelineBundle *pThis)
+{
+	// dynamically connect decoderbin src pad to video pad
+	if (FALSE == gst_element_link_many (pThis->decoder, pThis->sink, NULL) ) {
+		g_warning ("Pipeline link elements err. Exiting.\n");
+	}
+	g_print("decodebin_pad_added_handler called");
+}
+
 /*********************************************************************************************
  * Description: 新的pad回调函数                                                            	 *
  *                                                                                           *
@@ -241,7 +252,7 @@ static void new_rtp_session_manager_callback(GstElement *src, GstElement *manage
  * Return:  无                                                                                 *
  *********************************************************************************************/
 static void pad_added_handler (GstElement *src, GstPad *new_pad, RtspPipelineBundle *pThis) {
-	GstPad *sink_pad = gst_element_get_static_pad (pThis->depayloader, "sink");
+	GstPad *sink_pad = gst_element_get_static_pad (pThis->decoder, "sink");
 	GstPadLinkReturn ret;
 	GstCaps *new_pad_caps = NULL;
 	GstStructure *new_pad_struct = NULL;
@@ -296,7 +307,6 @@ static gboolean bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
   RtspPipelineBundle *p_appctx = (RtspPipelineBundle *) data;
 
   switch (GST_MESSAGE_TYPE (msg)) {
-
     case GST_MESSAGE_EOS:
 		g_info("End of stream\n");
 		break;
@@ -310,7 +320,7 @@ static gboolean bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
 
 		g_warning("Error: %s\n", error->message);
 		g_error_free (error);
-
+		stop(p_appctx);
 		break;
     }
     default:
@@ -320,12 +330,12 @@ static gboolean bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
 }
 
 /*********************************************************************************************
- * Description: 开启视频管道                                                                   *
- *                                                                                           *
- * Input :  RTSPServerInfo *p_info：链接的RTP服务器信息
- * 			GMainLoop *loop：主循环
- * 			const gchar *pipe_name：管道名称                                                   *
- * Return:  NULL：失败	非NULL：打开成功                                                       *
+ * Description: 开启视频管道                                                                 *
+ *                                                                                          *
+ * Input :  RTSPServerInfo *p_info：链接的RTP服务器信息                                      *
+ * 			GMainLoop *loop：主循环                                                          *
+ * 			const gchar *pipe_name：管道名称                                                 *
+ * Return:  NULL：失败	非NULL：打开成功                                                     *
  *********************************************************************************************/
 RtspPipelineBundle *start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop, const gchar *pipe_name)
 {
@@ -349,9 +359,7 @@ RtspPipelineBundle *start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop, cons
 		g_object_set (appctx->source, "do-rtcp", TRUE, NULL);
 	}
 
-	appctx->depayloader = gst_element_factory_make ("rtph264depay", "depayloader");
-	appctx->parser = gst_element_factory_make ("h264parse", "parser");
-	appctx->decoder = gst_element_factory_make ("avdec_h264", "decoder");
+	appctx->decoder = gst_element_factory_make ("decodebin3", "decoder");
 	appctx->sink = gst_element_factory_make ("glimagesink", "sink");
 
 	appctx->rtcpsink = gst_element_factory_make ("udpsink", "rtcpsink");
@@ -360,13 +368,14 @@ RtspPipelineBundle *start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop, cons
 		/* no need for synchronisation or preroll on the RTCP sink */
 		g_object_set (appctx->rtcpsink, "async", FALSE, "sync", FALSE, NULL);
 	}
-	if (!appctx->pipeline || !appctx->source || !appctx->depayloader \
-		|| !appctx->parser || !appctx->decoder || !appctx->rtcpsink \
-		|| !appctx->sink) {
+	if (!appctx->pipeline || !appctx->source || !appctx->decoder || 
+		!appctx->rtcpsink || !appctx->sink) {
 		g_warning ("One element could not be created. Exiting.\n");
 		goto ERR;
 	}
 
+	g_object_set(G_OBJECT(appctx->source), "buffer-mode", 4, NULL);
+	g_object_set(G_OBJECT(appctx->source), "latency",  80, NULL);
 	g_object_set(G_OBJECT(appctx->source), "location", p_info->location, NULL);
 	g_object_set(G_OBJECT(appctx->source), "user-id",  p_info->user_id,  NULL);
 	g_object_set(G_OBJECT(appctx->source), "user-pw",  p_info->user_pwd, NULL);
@@ -385,21 +394,22 @@ RtspPipelineBundle *start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop, cons
 	gst_object_unref (bus);
 
 	//then add all elements together
-	gst_bin_add_many (GST_BIN (appctx->pipeline), appctx->source, appctx->depayloader, appctx->rtcpsink, \
-							 appctx->parser, appctx->decoder, appctx->sink, NULL);
+	gst_bin_add_many (GST_BIN (appctx->pipeline), appctx->source, appctx->rtcpsink, \
+							 appctx->decoder, appctx->sink, NULL);
 	//link everythink after source
-	if (FALSE == gst_element_link_many (appctx->depayloader, appctx->parser, appctx->decoder, \
-			appctx->sink, NULL)) {
-		g_warning ("Pipeline link many elements err. Exiting.\n");
+	/* if (FALSE == gst_element_link_many (appctx->decoder, appctx->sink, NULL) ) {
+		g_warning ("Pipeline link elements err. Exiting.\n");
 		goto ERR_ADD;
-	}
-
+	} */
 	/*
 	* Connect to the pad-added signal for the rtpbin.  This allows us to link
 	* the dynamic RTP source pad to the depayloader when it is created.
 	*/
 	g_signal_connect(appctx->source, "pad-added", G_CALLBACK (pad_added_handler), appctx);
 
+	/* Connect to the pad-added signal for the decodebin3. */
+	g_signal_connect(appctx->decoder,"pad-added", G_CALLBACK (decodebin_pad_added_handler), appctx);
+	
 	/* Register a "new-manager" signal callback on rtspsrc to get the rtpbin element */
 	g_signal_connect(appctx->source, "new-manager", G_CALLBACK (new_rtp_session_manager_callback), appctx);
 
@@ -416,8 +426,6 @@ ERR:
 	if (NULL != appctx) {
 		if (NULL != appctx->pipeline) 	gst_object_unref (GST_OBJECT (appctx->pipeline));
 		if (NULL != appctx->source) 	gst_object_unref (GST_OBJECT (appctx->source));
-		if (NULL != appctx->depayloader) gst_object_unref (GST_OBJECT (appctx->depayloader));
-		if (NULL != appctx->parser) 	gst_object_unref (GST_OBJECT (appctx->parser));
 		if (NULL != appctx->decoder) 	gst_object_unref (GST_OBJECT (appctx->decoder));
 		if (NULL != appctx->rtcpsink) 	gst_object_unref (GST_OBJECT (appctx->rtcpsink));
 		if (NULL != appctx->sink) 		gst_object_unref (GST_OBJECT (appctx->sink));
@@ -425,6 +433,7 @@ ERR:
 		appctx = NULL;
 	}
 	return NULL;
+
 ERR_ADD:
 	if (NULL != appctx) {
 		if (NULL != appctx->pipeline) 	gst_object_unref (GST_OBJECT (appctx->pipeline));
@@ -434,6 +443,21 @@ ERR_ADD:
 	return NULL;
 }
 
+/*********************************************************************************************
+* Description: stop                                                                          *
+*                                                                                            *
+* Input : RtspPipelineBundle *p_appctx：                                                     *
+* Return:                                                                                    *
+*********************************************************************************************/
+void stop(RtspPipelineBundle *p_appctx) {
+	/* Out of the main loop, clean up nicely */
+	if (NULL != p_appctx) {
+		if (NULL != p_appctx->pipeline) {
+			g_info("Returned, stopping playback\n");
+			gst_element_set_state(p_appctx->pipeline, GST_STATE_NULL);
+		}
+	}
+}
 
 /*********************************************************************************************
  * Description: 清理管道数据                                                                   *

@@ -917,6 +917,7 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 	AppContext 	*app = user_data;
 	gchar		*key = NULL;
 	VideoInfo 	*video = NULL;
+	gboolean	found = FALSE;
 
 	//1.查询需要的字段并获取
 	if (!json_object_has_member (object, "name") \
@@ -946,12 +947,31 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 	}
 	strncpy(key, name, strlen(name));
 	//查询该名称通道是否存在
-	if (TRUE == g_hash_table_lookup_extended (g_hash_video_info, key, \
+	/* if (TRUE == g_hash_table_lookup_extended (g_hash_video_info, key, \
 					NULL, NULL)) {
 		glib_log_warning ("Key already exist err");
 		ret = eMSG_JSON_PLAY_KEY_ALREADY_EXIST;
 		goto ERR;
+	} */
+	video = (VideoInfo *)g_hash_table_lookup(g_hash_video_info, key);
+	if (NULL != video) {
+		glib_log_debug("Hash remove key:%s", video->name);
+		clean_up(video->pipe);
+		video->pipe = NULL;
+		found = g_hash_table_remove(g_hash_video_info, name);
+		if (TRUE != found) {
+			glib_log_warning("Hash remove %s err", name);
+			ret = eMSG_JSON_STOP_HASH_REMOVE_ERR;
+		}
+		else {
+			ret = eMEDIA_SERVER_SUCCESS;
+		}
 	}
+	else {
+		glib_log_warning("Hash value is NULL");
+		ret = eMSG_JSON_STOP_HASH_VLAUE_ERR;
+	}
+
 	video = (VideoInfo *)g_malloc0(sizeof(VideoInfo));
 	if (NULL == video) {
 		glib_log_warning ("Video info malloc err");

@@ -274,10 +274,10 @@ function updateElement(element, item) {
   $("#username_" + id, element).val(item.user_id);
   $("#password_" + id, element).val(item.user_pw);
 
-  var newconfig = "<form><ul><li id=\"name_" + id + "\"><span aria-hidden='true' class='icon_globe'></span>&nbsp;<font>名称:</font>"+ item.text +"</li>" +
-  "<li id=\"url_"+ id +"\"><span aria-hidden='true' class='icon_search_alt'></span>&nbsp;<font>网络地址:</font>"  + item.url + "</li>" +
-  "<li id=\"username_"+ id + "\"><span aria-hidden='true' class='icon_pens_alt'></span>&nbsp;<font>用户名:</font>" + item.user_id + "</li>" +
-  "<li id=\"password_"+ id + "\"><span aria-hidden='true' class='icon_pens_alt'></span>&nbsp;<font>密码:</font>" + item.user_pw + "</li>" +
+  var newconfig = "<form><ul><li id=\"name_" + id + "\"><span aria-hidden='true' class='icon_globe'></span>"+ item.text +"</li>" +
+  "<li id=\"url_"+ id +"\"><span aria-hidden='true' class='icon_search_alt'></span>"  + item.url + "</li>" +
+  "<li id=\"username_"+ id + "\"><span aria-hidden='true' class='icon_pens_alt'></span>" + item.user_id + "</li>" +
+  "<li id=\"password_"+ id + "\"><span aria-hidden='true' class='icon_pens_alt'></span>" + item.user_pw + "</li>" +
   "</form>";
 
   var newstats = "<form><input id" + id + "='btn' type='button' value='跟踪' onclick='test()'/></form>"

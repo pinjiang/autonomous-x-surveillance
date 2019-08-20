@@ -43,9 +43,9 @@ typedef struct myDataTag {
 	//element 参数
 	GstElement *pipeline;
 	GstElement *source;
-	GstElement *depayloader;
+	// GstElement *depayloader;
 	GstElement *rtcpsink;
-	GstElement *parser;
+	// GstElement *parser;
 	GstElement *decoder;
 	GstElement *sink;
 

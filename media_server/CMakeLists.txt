@@ -4,7 +4,7 @@ set(CMAKE_BUILD_TYPE DEBUG)
 # DEBUG/MINSIZEREL/RELWITHDEBINFO/RELEASE
 if(WIN32)
 set(CMAKE_C_FLAGS "-DWIN32 -DG_LOG_DOMAIN=\\\"gst_rtsp_lib\\\"")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g -O0")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS}")
@@ -30,6 +30,7 @@ target_sources(gst-viewer
     PRIVATE
         main.c
         media_server.c
+		media_server.h
         ${CMAKE_CURRENT_LIST_DIR}/../utils/utils.c
 		${CMAKE_CURRENT_LIST_DIR}/../utils/utils.h
 )
