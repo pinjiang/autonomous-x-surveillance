@@ -10,6 +10,7 @@
 typedef enum {
 	eInvalid = -1, eBollean, eInt, eUint, eInt64, eUint64
 }RtcpValueType;
+
 typedef enum {
 	eTypeInvalid = -1,
 	eSSRC, eRECEIVED_BYE, eClockRate, eOCTETS_RECVIVED, ePACKETS_RECEIVED,
@@ -18,25 +19,30 @@ typedef enum {
 	eSENT_RB_FRACTIONLOST,eBitrate, eSENT_RB_EXTHIGHESTSEQ, eSentRbPacketsLost, eSentRbJitter,
 	eSENT_RB_LSR,eSENT_RB_DLSR,
 }RtcpType;
+
 typedef union {
 	gboolean	value_bool;
 	gint 		value_int;
 	guint 		value_uint;
 	gint64		value_int64;
 	guint64		value_uint64;
-}RtcpValue;
+} RtcpValue;
+
 typedef struct {
 	RtcpType		id;
 	gchar 			key[RTCP_LEY_LEN_MAX];
 	RtcpValueType	value_type;	//数值类型
 	gdouble			fk;			//数值系数
 	gboolean		write_history_flage;//是否写入到历史数据
-}RtcpParseInfo;
+} RtcpParseInfo;
 /*********************************************/
+
 typedef struct {
    const char *location;
    const char *user_id;
    const char *user_pwd;
+   guint latency;
+   guint protocols;
 }RTSPServerInfo;
 
 typedef struct myDataTag {

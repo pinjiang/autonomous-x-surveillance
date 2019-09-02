@@ -90,13 +90,6 @@ var block_template = "<div class=\"col-md-4 column\" id=\"camera_00\" align=\"ce
 </div>";
 
 var messages ="";
-/**
- * Sends the value of the text input to the server
- */
-/* function send(){
-  var text = document.getElementById("messageinput").value;
-  webSocket.send(text);
-} */
 
 function clone(obj) {
   if (null == obj || "object" != typeof obj) return obj;
@@ -197,11 +190,13 @@ function openVideo(obj) {
   var user_pw = $("#password_" + id, data_content_dom).text(); 
 
 	var jsonObj = {
-    "type"   : "play",
-    "name"   : name,
-    "url"    : url,
-    "user_id": user_id,
-    "user_pw": user_pw,
+    "type"    : "play",
+    "name"    : name,
+    "url"     : url,
+    "user_id" : user_id,
+    "user_pw" : user_pw,
+    "latency" : 200,
+    "protocol": "UDP"
   };
   console.log(jsonObj);
   webSocket.send(JSON.stringify(jsonObj));
@@ -220,7 +215,9 @@ function closeVideo(obj) {
   var element = console.log($(obj).parent());
   var id = $(obj).parent().attr("id").split("_")[1];
 
-  var name = $("#name_" + id).val();
+  var data_content_dom =  $.parseHTML($("#config_" + id).attr("data-content"));
+  var name =  $("#name_" + id, data_content_dom).text();
+
 	var jsonObj = {
     "type"   : "stop",
     "name"   : name,
@@ -251,21 +248,10 @@ function nextElement(element) {
     $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
     //test
   });
-
-  /* 
-  $('input', $(element)).each(function(i, obj) {
-    $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
-    //test
-  });
-
-  $('.collapse', $(element)).each(function(i, obj) {
-    $(obj).attr("id", $(obj).attr("id").split("_")[0]+"_"+id);
-    //test
-  });
-  */
-
 }
 
+/**
+ */
 function updateElement(element, item) {
   var id = $(element).attr("id").split("_")[1];
   $("#heading_" + id, element).text(item.text);
@@ -280,12 +266,14 @@ function updateElement(element, item) {
   "<li id=\"password_"+ id + "\"><span aria-hidden='true' class='icon_pens_alt'></span>" + item.user_pw + "</li>" +
   "</form>";
 
-  var newstats = "<form><input id" + id + "='btn' type='button' value='跟踪' onclick='test()'/></form>"
+  var newstats = "<form><input id" + id + "='btn' type='button' value='跟踪' onclick='open_stats_url()'/></form>"
 
   $('#config_' + id, element).attr("data-content", newconfig);
   $('#stats_' + id, element).attr("data-content", newstats);
 }
 
+/**
+ */
 function appendElement(item) {
   var newElement = $.parseHTML(block_template);
   nextElement(newElement);
@@ -293,6 +281,8 @@ function appendElement(item) {
   $("#cameras").append(newElement);
 }
 
+/**
+ */
 function appendTable(item) {
   var new_tr = "<tr> <td> <div class=\"custom-control custom-radio\"> \
   <input type=\"radio\" class=\"custom-control-input\" name=\"defaultExampleRadios\"> \
@@ -301,9 +291,19 @@ function appendTable(item) {
   $('#device-tbl tbody').append(new_tr_dom);
 }
 
-// 模拟动态加载标题(真实情况可能会跟后台进行ajax交互)
 function title() {
   return '详细信息';
+}
+
+function open_stats_url() {
+  var win = window.open('../line_gauge/line_gauge.html', '_blank');
+  if (win) {
+    //Browser has allowed it to be opened
+    win.focus();
+  } else {
+    //Browser has blocked it
+    alert('Please allow popups for this website');
+  }
 }
  
 $(function(){
@@ -399,8 +399,8 @@ $(function(){
         user_id:$('#editUsername').val(),
         user_pw:$('#editPassword').val()
       };
-      $('#left-tree').treeview('updateNode', [ node, newNode]);
       updateNode(getTree(), node[0].text, newNode);
+      $('#left-tree').treeview('updateNode', [ node, newNode]);
       $.showMsgText('保存成功');
     });
     //显示-添加

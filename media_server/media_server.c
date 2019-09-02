@@ -617,10 +617,10 @@ static gboolean hash_table_sub_remove_call (gpointer key, gpointer value, gpoint
 	}
 	VideoInfo *video = value;
 	if (NULL != video) {
-		if (NULL != video->url) 	g_free(video->url);
-		if (NULL != video->name) 	g_free(video->name);
-		if (NULL != video->user_id) 	g_free(video->user_id);
-		if (NULL != video->user_pwd) 	g_free(video->user_pwd);
+		if (NULL != video->url) 	 g_free(video->url);
+		if (NULL != video->name) 	 g_free(video->name);
+		if (NULL != video->user_id)  g_free(video->user_id);
+		if (NULL != video->user_pwd) g_free(video->user_pwd);
 		if (NULL != video->pipe)	{
 			clean_up(video->pipe);
 			video->pipe = NULL;
@@ -654,10 +654,10 @@ static void hash_remove_value_call (gpointer data)
 	VideoInfo *video = (VideoInfo *)data;
 	if (NULL != video) {
 		glib_log_info("Remove value:%s", video->name);
-		if (NULL != video->url) 	g_free(video->url);
-		if (NULL != video->name) 	g_free(video->name);
-		if (NULL != video->user_id) 	g_free(video->user_id);
-		if (NULL != video->user_pwd) 	g_free(video->user_pwd);
+		if (NULL != video->url) 	 g_free(video->url);
+		if (NULL != video->name) 	 g_free(video->name);
+		if (NULL != video->user_id)  g_free(video->user_id);
+		if (NULL != video->user_pwd) g_free(video->user_pwd);
 		if (NULL != video->pipe)	{
 			clean_up(video->pipe);
 			video->pipe = NULL;
@@ -912,6 +912,9 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 
 	gint		ret		= eMEDIA_SERVER_SUCCESS;
 	const gchar	*name = NULL, *url = NULL, *user_id = NULL, *user_pw = NULL;
+	gint        latency;
+	const gchar	*protocol;
+
 	JsonObject 	*object 	= msg_data;
 	RTSPServerInfo info = {0};
 	AppContext 	*app = user_data;
@@ -936,6 +939,14 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 		glib_log_warning ("Get 'name' || 'url' || 'user_id' || 'user_pwd' value err");
 		return eMSG_JSON_PLAY_GET_MEMBER_ERR;
 	}
+
+	if (json_object_has_member(object, "latency")) {   // extra "latency" parameter 
+		latency = json_object_get_int_member(object, "latency");
+	}
+	if (json_object_has_member(object, "protocol")) {   // extra "latency" parameter 
+		protocol = json_object_get_string_member(object, "protocol");
+	}
+
 	glib_log_debug("play url:%s", url);
 
 	//2.插入视频信息，开始启动管道
@@ -1011,6 +1022,15 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 	info.location = video->url;
 	info.user_id = video->user_id;
 	info.user_pwd = video->user_pwd;
+	info.latency = latency;          // extra "latency" parameter
+
+	if (g_strcmp0(protocol, "UDP"))
+		info.protocols = 0x01;
+	else if(g_strcmp0(protocol, "TCP") ) 
+		info.protocols = 0x04;
+	else
+		info.protocols = 0x07;  // "tcp+udp-mcast+udp"
+
 	video->pipe = start_pipeline(&info, app->loop, name);
 	if (NULL != video->pipe) {
 		video->status = eVIDEO_STATUS_PLAY;

@@ -11,12 +11,12 @@
 //外部使用参数
 RtcpParseInfo g_rtcp_parameter[RTCP_MAX_NUM] = {
 		{eSSRC, 			"ssrc",			 		eUint, 1.0, FALSE},
-		{eRECEIVED_BYE,	"received-bye",			eBollean, 1.0, FALSE},
+		{eRECEIVED_BYE,	    "received-bye",			eBollean, 1.0, FALSE},
 		{eClockRate,	 	"clock-rate", 			eInt, 1.0, TRUE},
-		{eOCTETS_RECVIVED,"octets-received", 		eUint64, 1.0, FALSE},
-		{ePACKETS_RECEIVED,"packets-received", 	eUint64, 1.0, FALSE},
-		{eBitrate,		"bitrate", 				eUint64, 1.0, TRUE},
-		{ePACKETS_LOST,	"packets-lost", 		eInt, 1.0, FALSE},
+		{eOCTETS_RECVIVED,  "octets-received", 		eUint64, 1.0, FALSE},
+		{ePACKETS_RECEIVED, "packets-received", 	eUint64, 1.0, FALSE},
+		{eBitrate,		    "bitrate", 			    eUint64, 1.0, TRUE},
+		{ePACKETS_LOST,	    "packets-lost", 	    eInt, 1.0, FALSE},
 		{eJITTER,			"jitter", 				eUint, 1.0, FALSE},
 		{eSENT_PLI_COUNT,	"sent-pli-count", 		eUint, 1.0, FALSE},
 		{eRECV_PLI_COUNT,	"recv-pli-count", 		eUint, 1.0, FALSE},
@@ -26,14 +26,14 @@ RtcpParseInfo g_rtcp_parameter[RTCP_MAX_NUM] = {
 		{eSR_NTPTIME,		"sr-ntptime", 			eUint, 1.0, FALSE},
 		{eSR_RTPTIME,		"sr-rtptime",			eUint, 1.0, FALSE},
 		{eSR_OCTET_COUNT,	"sr-octet-count",		eUint, 1.0, FALSE},
-		{eSR_PACKET_COUNT,"sr-packet-count",		eUint, 1.0, FALSE},
+		{eSR_PACKET_COUNT,  "sr-packet-count",		eUint, 1.0, FALSE},
 
-		{eSENT_RB_FRACTIONLOST,	"sent-rb-fractionlost",	eUint, 1.0, FALSE},
+		{eSENT_RB_FRACTIONLOST,	    "sent-rb-fractionlost",	eUint, 1.0, FALSE},
 		{eSentRbPacketsLost, 		"sent-rb-packetslost",	eInt, 1.0, TRUE},
 		{eSENT_RB_EXTHIGHESTSEQ,	"sent-rb-exthighestseq",eUint, 1.0, FALSE},
 		{eSentRbJitter, 	 		"sent-rb-jitter",		eUint, 1000.0, TRUE},
-		{eSENT_RB_LSR,			"sent-rb-lsr",			eUint, 1.0, FALSE},
-		{eSENT_RB_DLSR,			"sent-rb-dlsr",			eUint, 1.0, FALSE}
+		{eSENT_RB_LSR,			    "sent-rb-lsr",			eUint, 1.0, FALSE},
+		{eSENT_RB_DLSR,			    "sent-rb-dlsr",			eUint, 1.0, FALSE}
 
 
 //		[eSSRC] 				= {eSSRC, 			"ssrc",			 		eUint, 1.0, FALSE},
@@ -374,8 +374,8 @@ RtspPipelineBundle *start_pipeline(RTSPServerInfo *p_info, GMainLoop *loop, cons
 		goto ERR;
 	}
 
-	g_object_set(G_OBJECT(appctx->source), "buffer-mode", 4, NULL);
-	g_object_set(G_OBJECT(appctx->source), "latency",  80, NULL);
+	g_object_set(G_OBJECT(appctx->source), "protocols",p_info->protocols, NULL);
+	g_object_set(G_OBJECT(appctx->source), "latency",  p_info->latency, NULL);
 	g_object_set(G_OBJECT(appctx->source), "location", p_info->location, NULL);
 	g_object_set(G_OBJECT(appctx->source), "user-id",  p_info->user_id,  NULL);
 	g_object_set(G_OBJECT(appctx->source), "user-pw",  p_info->user_pwd, NULL);
