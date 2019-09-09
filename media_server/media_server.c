@@ -21,7 +21,18 @@
 //请求消息为字符串类型
 #define MSG_TEX_TYPE_MAX			2
 #define MSG_TEXT_STRING_LEN_MAX 	64
-typedef gint (*MsgTexSubParseRequst)(gpointer msg_data, gchar **reply, gpointer user_data);
+
+//RTCP控制数据写入文件
+#define FILE_PATH_RUNTIME		"/runtime/"
+#define FILE_PATH_HISTORY		"/history/"
+#define FILE_PATH_HISTORY_LIST	"/list/"
+
+#define FILE_HISTORY_LIST_VALUE "{\"Files\":[]}"
+#define FILE_HISTORY_VALUE 		"{\"data\":[]}"
+
+typedef void(*HashForeach)(gpointer key, gpointer value, gpointer user_data);
+typedef gint(*MsgTexSubParseRequst)(gpointer msg_data, gchar **reply, gpointer user_data);
+
 typedef struct {
 	gchar 					type[MSG_TEXT_STRING_LEN_MAX];
 	MsgTexSubParseRequst	parse_request;
@@ -42,38 +53,31 @@ typedef struct {
 	VideoStatus status;
 	RtspPipelineBundle 	*pipe;
 }VideoInfo;
-//RTCP控制数据写入文件
-#define FILE_PATH_RUNTIME		"/runtime/"
-#define FILE_PATH_HISTORY		"/history/"
-#define FILE_PATH_HISTORY_LIST	"/list/"
-
-#define FILE_HISTORY_LIST_VALUE "{\"Files\":[]}"
-#define FILE_HISTORY_VALUE 		"{\"data\":[]}"
-
-typedef void (*HashForeach)(gpointer key, gpointer value, gpointer user_data);
 
 typedef struct {
 	GString *process_name;
 	GString	*runtime_file;
 	GString	*history_file;
 	GString	*history_list_file;
-
-	GDateTime  	*time;
-	gint64		time_sec;
-
-	JsonParser	*history;	//历史数据
-	JsonArray	*history_data_array;	//历史文件数据节点
-}RtcpToFile;
-
+	GDateTime *time;
+	gint64 time_sec;
+	JsonParser *history;	//历史数据
+	JsonArray  *history_data_array;	//历史文件数据节点
+} RtcpToFile;
 
 void stop_server(SoupServer* server);
 
 /*******************************************************************************************************/
 static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gchar *task_name);
 static gint add_rtcp_file_list(RtcpToFile *rtcp);
+
 //内部使用函数
+static void http_callback(SoupServer *server, SoupMessage *msg,
+	                      const char *path, GHashTable *query, SoupClientContext *context, gpointer data);
+
 static void websocket_callback (SoupServer *server, SoupWebsocketConnection *connection,
 								const char *path, SoupClientContext *client, gpointer user_data);
+
 static gboolean send_rtcp_callback (gpointer user_data);
 static JsonNode* add_rtcp_data_to_json(HashForeach hash_foreach_call);
 static void hash_tab_foreach_runtime_call(gpointer key, gpointer value, gpointer user_data);
@@ -117,7 +121,6 @@ static RtcpToFile g_rtcp_to_file = {0};			//处理rtcp信息到文件中
  *********************************************************************************************/
 SoupServer* start_server(AppOption *opt, AppContext *app)
 {
-
 	if (NULL == opt || NULL == app) {
 		return NULL;
 	}
@@ -160,6 +163,7 @@ SoupServer* start_server(AppOption *opt, AppContext *app)
 	}
 
 	/* 3.增加WebSocket处理函数 */
+	soup_server_add_handler(server, NULL, http_callback, NULL, NULL);
 	soup_server_add_websocket_handler(server, NULL, NULL, NULL,
 								   websocket_callback,
 								   app, NULL);
@@ -191,9 +195,9 @@ SoupServer* start_server(AppOption *opt, AppContext *app)
 }
 
 /*********************************************************************************************
- * Description: 停止websocket服务， 释放资源                                                    *
+ * Description: 停止websocket服务， 释放资源                                                  *
  *                                                                                           *
- * Input : SoupServer* server:停止服务的指针                                                   *
+ * Input : SoupServer* server:停止服务的指针                                                  *
  * Return: 无                                                                                *
  *********************************************************************************************/
 void stop_server(SoupServer* server)
@@ -221,9 +225,9 @@ void stop_server(SoupServer* server)
  * Description: 初始化rtcp参数写入文件的参数，创建文件	                                         *                                                                                     *
  * Input : 	RtcpToFile *rtcp: RTCP:写入文件的的信息缓存区										 *
  * 			const char *task_name: 测试任务名                                         		 *
- * Return:  创建文件的结果																		 *
+ * Return:  创建文件的结果																	 *
  * 			eMEDIA_SERVER_SUCCESS:成功														 *
- * 			其他：失败                                                                         *
+ * 			其他：失败                                                                        *
  *********************************************************************************************/
 static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gchar *task_name)
 {
@@ -332,9 +336,9 @@ static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gch
 	return eMEDIA_SERVER_SUCCESS;
 }
 /*********************************************************************************************
- * Description: 向历史列表文件中增加节点                                                         *                                                                                     *
- * Input :     RtcpToFile *rtcp: RTCP:写入文件的的信息缓存区                                     *
- * Return:     eMEDIA_SERVER_SUCCESS：成功	其他：失败                                         *
+ * Description: 向历史列表文件中增加节点                                                       *                                                                                     *
+ * Input :     RtcpToFile *rtcp: RTCP:写入文件的的信息缓存区                                   *
+ * Return:     eMEDIA_SERVER_SUCCESS：成功	其他：失败                                        *
  *********************************************************************************************/
 static gint add_rtcp_file_list(RtcpToFile *rtcp)
 {
@@ -1024,9 +1028,9 @@ static gint msg_requst_type_paly(gpointer msg_data, gchar **reply, gpointer user
 	info.user_pwd = video->user_pwd;
 	info.latency = latency;          // extra "latency" parameter
 
-	if (g_strcmp0(protocol, "UDP"))
+	if (g_strcmp0(protocol, "UDP") == 0)
 		info.protocols = 0x01;
-	else if(g_strcmp0(protocol, "TCP") ) 
+	else if(g_strcmp0(protocol, "TCP") == 0) 
 		info.protocols = 0x04;
 	else
 		info.protocols = 0x07;  // "tcp+udp-mcast+udp"
@@ -1124,13 +1128,13 @@ ERR:
 }
 
 /*********************************************************************************************
- * Description: 仅支持特定的回复命令                                                            *
+ * Description: 仅支持特定的回复命令                                                          *
  *                                                                                           *
- * Input :		gchar **reply：返回字符串存储缓存区
- * 			 	const gchar *member：key
+ * Input :		gchar **reply：返回字符串存储缓存区                                           *
+ * 			 	const gchar *member：key                                                     *
  * 			 	const gchar *value：value                                                    *
- * Return:      eMEDIA_SERVER_SUCCESS：成功
- * 				其他：失败                                                                     *
+ * Return:      eMEDIA_SERVER_SUCCESS：成功                                                  *
+ * 				其他：失败                                                                   *
  *********************************************************************************************/
 static gint reply_text_msg_on_json(gchar **reply, const gchar *member, const gchar *value)
 {
@@ -1231,69 +1235,11 @@ static void do_get (SoupServer *server, SoupMessage *msg, const char *path) {
  * Return:                                                                                   *
  *********************************************************************************************/
 static void do_post (SoupServer *server, SoupMessage *msg) {
-#if 0
-  SoupBuffer *buffer;
-  gchar *text;
-  JsonObject *json_obj;
-  GError **error;
-
-  json_obj = json_object_new ();
-  json_object_set_string_member (json_obj, "code", "0");
-  text = json_to_string(json_obj, true);
-  json_object_unref (json_obj);
-
-  buffer = soup_buffer_new_with_owner (text, strlen(text), text, (GDestroyNotify)g_free);
-
-  soup_message_headers_append (msg->response_headers,"Access-Control-Allow-Origin", "*");
-  soup_message_body_append_buffer (msg->response_body, buffer);
-  soup_buffer_free (buffer);
-
-  soup_message_set_status (msg, SOUP_STATUS_OK);
-#endif
-
   if (msg->request_body->length) {
     g_print ("%s\n", msg->request_body->data);
-
-    //===============add by liyujia, 20180905=================
-    //now ,parse json data
     JsonObject *object = parse_json_object(msg->request_body->data);
-
-#if 0
-    if (json_object_has_member (object, "ConnectToServer")) {
-      JsonObject *child;
-      const gchar *server_url_, *terminal_id_;
-      child = json_object_get_object_member (object, "ConnectToServer");
-      if (json_object_has_member (child, "server_url") && json_object_has_member (child, "terminal_id")) {
-        server_url_ = json_object_get_string_member (child, "server_url");
-        terminal_id_ = json_object_get_string_member (child, "terminal_id");
-      }
-      g_print ("server_url = %s,  terminal_id = %s\n", server_url_, terminal_id_);
-
-      // checkAndConnect(server_url_, terminal_id_);
-    } else if (json_object_has_member (object, "Monitoring")) {
-      JsonObject *child;
-      const gchar *_event_, *_data_, *_peerId_;
-      child = json_object_get_object_member (object, "Monitoring");
-
-      if (json_object_has_member (child, "_event") && json_object_has_member (child, "_data") && json_object_has_member (child, "_peerId")) {
-        _event_ = json_object_get_string_member (child, "_event");
-        _data_ = json_object_get_string_member (child, "_data");
-        _peerId_ = json_object_get_string_member (child, "_peerId");
-      }
-      g_print ("event = %s,  data = %s, peerId = %s\n", _event_, _data_, _peerId_);
-
-      if (!setup_call (_peerId_)) {
-        g_print ("Failed to setup call!\n");
-        cleanup_and_quit_loop ("ERROR: Failed to setup call", PEER_CALL_ERROR);
-      }
-
-      } else {
-        g_print ("do nothing!\n");
-      }
-      //add end
-#endif
   }
-
+  soup_message_set_status(msg, SOUP_STATUS_OK);
 }
 
 /*********************************************************************************************

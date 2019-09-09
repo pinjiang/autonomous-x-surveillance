@@ -26,7 +26,7 @@
           <div class="row">
             <div class="col-md-12">
                 <div class="tabbable" id="tabs">
-                  <ul class="nav nav-tabs">
+                <ul class="nav nav-tabs">
                 <li class="nav-item">
                   <a class="nav-link active show" href="#tab1" data-toggle="tab">设备管理</a>
                 </li>
@@ -36,15 +36,13 @@
                 <li class="nav-item">
                   <a class="nav-link" href="#tab3" data-toggle="tab">人员管理</a>
                 </li>
-                  </ul>
-                  <div class="tab-content">
+                <li class="nav-item">
+                  <a class="nav-link" href="#tab4" data-toggle="tab">配置管理</a>
+                </li>
+                </ul>
+                <div class="tab-content">
                 <div class="tab-pane active" id="tab1">
                   <header class="container" style="margin-bottom: 35px;">
-                      <div class="col-md-12">
-                        <input id="btnAdd" class="btn btn-primary" type="button" value="添加节点">
-                        <input id="btnMove" class="btn btn-success" type="button" value="节点移动">
-                        <input id="btnDel" class="btn btn-danger" type="button" value="删除节点">
-                      </div>
                   </header>
                   <div class="container">
                   <div class="row">
@@ -55,8 +53,13 @@
                             </div>
                             <div class="panel-body right_centent" style="">
                               <div id="left-tree"></div>
+                              <div class="col-md-12">
+                                <input id="btnAdd" class="btn btn-primary" type="button" value="添加节点">
+                                <input id="btnMove" class="btn btn-success" type="button" value="节点移动">
+                                <input id="btnDel" class="btn btn-danger" type="button" value="删除节点">
+                              </div>
                             </div>
-                          </div>
+                        </div>
                       </div>
                       <div class="col-md-8">
                         <div class="panel panel-primary ">
@@ -202,6 +205,8 @@
                   </div>
                 </div>   <!-- tab-pane" id="tab2" -->
                 <div class="tab-pane" id="tab3">
+                </div>
+                <div class="tab-pane" id="tab4">
                 </div>
                 </div>  <!-- tab-content -->
               </div>

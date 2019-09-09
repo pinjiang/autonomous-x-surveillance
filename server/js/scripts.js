@@ -38,42 +38,7 @@ var tree = [
         user_pw: ""
       }
     ]
-  },
-/*{
-    text : "挖机",
-    id   : "3",
-    type : "machinery",
-    nodes: [
-      {
-        text   : "前视",
-        type   : "camera",
-        url    : "rtsp://127.0.0.1:7001",
-        user_id: "",
-        user_pw: ""
-      },
-      {
-        text   : "左视",
-        type   : "camera",
-        url    : "rtsp://127.0.0.1:7002",
-        user_id: "",
-        user_pw: ""
-      },
-      {
-        text   : "右视",
-        type   : "camera",
-        url    : "rtsp://127.0.0.1:7003",
-        user_id: "",
-        user_pw: ""
-      },
-      {
-        text   : "后视",
-        type   : "camera",
-        url    : "rtsp://127.0.0.1:7004",
-        user_id: "",
-        user_pw: ""
-      }
-    ]
-  }, */
+  }
 ];  
 
 var block_template = "<div class=\"col-md-4 column\" id=\"camera_00\" align=\"center\"> <p> \
@@ -313,6 +278,16 @@ $(function(){
   //页面加载
   function onLoad()
   {
+    $.ajax({
+      type: 'GET',
+      url: '/api/video/config',
+      contentType: 'application/json',
+      success: function(res) {
+        console.log(res);
+        alert(res);
+      }
+    }); 
+
     //渲染树
     $('#left-tree').treeview({
       data: getTree(),
@@ -401,7 +376,18 @@ $(function(){
       };
       updateNode(getTree(), node[0].text, newNode);
       $('#left-tree').treeview('updateNode', [ node, newNode]);
-      $.showMsgText('保存成功');
+      $.ajax({
+        type: 'POST',
+        url: '/api/video/config',
+        contentType: 'application/json',
+        data: JSON.stringify(tree), // access in body
+      }).done(function () {
+        console.log('SUCCESS');
+        $.showMsgText('保存成功');
+      }).fail(function (msg) {
+        console.log('FAIL');
+        $.showMsgText('保存失败');
+      });
     });
     //显示-添加
     $("#btnAdd").click(function(){
