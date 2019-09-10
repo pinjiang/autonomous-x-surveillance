@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 	/* 2.开始启动服务 */
 	glib_log_info("Media Server Started");
 	signal (SIGINT, quit);
-#if not WIN32
+#ifdef WIN32
 	signal(SIGKILL, quit);
 #endif
 	signal (SIGTERM, quit);
