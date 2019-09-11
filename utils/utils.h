@@ -76,7 +76,7 @@ enum {
 };
 
 
-gint open_file(const gchar *pPath, const gchar *pOper, const gchar *pData, const guint nDataLen);
+gint oper_file(const gchar *pPath, const gchar *pOper, const gchar *pData, const guint nDataLen);
 gint del_file(const gchar *pPath);
 gint read_file(const gchar *pPath, gchar **pData);
 

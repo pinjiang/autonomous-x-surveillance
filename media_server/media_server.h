@@ -53,6 +53,10 @@ enum {
 	eMSG_JSON_WRIEW_STREAM_NEW_ERR		= -350,
 };
 
+
+#define CONFIG_FILE 		"./config.json"
+#define CONFIG_GET_PATH 	"./api/video/config"
+
 typedef struct {
   GMainLoop *loop;
   volatile gboolean g_running_flag;

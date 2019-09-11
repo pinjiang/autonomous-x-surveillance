@@ -127,7 +127,7 @@ gint write_json_to_file(const gchar *file, JsonNode *node)
 	json_generator_set_root(gen, node);
 
 	gchar *str = json_generator_to_data(gen, &str_len);
-	if (aWork_FILE_SUCCESS != open_file(file, "w+", str, str_len)) {
+	if (aWork_FILE_SUCCESS != oper_file(file, "w+", str, str_len)) {
 		g_free(str);
 		g_object_unref (gen);
 		return -2;
@@ -287,18 +287,18 @@ gint read_file(const gchar *pPath, gchar **pData)
 		nDataLen: 字符串长度
 @返  回：aWork_FILE_SUCCESS: 成功		小于0:错误
 ********************************************************************************************************************/
-gint open_file(const gchar *pPath, const gchar *pOper, const gchar *pData, const guint nDataLen)
+gint oper_file(const gchar *pPath, const gchar *pOper, const gchar *pData, const guint nDataLen)
 {
 	if (NULL == pPath || NULL == pOper || NULL == pData || nDataLen == 0) {
 		return aWork_FILE_INVALID;
 	}
 
-	/* 1.按照 */
+	/* 1.按照选项的方式打开文件 */
 	FILE *f = fopen(pPath, pOper);
 	if (NULL == f) {
 		return aWork_FILE_OPEN_FILE_ERR;
 	}
-	/* 3.读文件 */
+	/* 2.写文件 */
 	if (nDataLen != fwrite(pData, 1, nDataLen, f)) {
 		return aWork_FILE_READ_FILE_LEN_ERR;
 	}

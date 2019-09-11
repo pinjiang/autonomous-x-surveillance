@@ -292,7 +292,7 @@ static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gch
 	/* 3.检查文件是否存在，不存在则创建 */
 	//增加历史文件
 	glib_log_debug("Create %s start.", rtcp->history_file->str);
-	ret = open_file(rtcp->history_file->str, "w+", FILE_HISTORY_VALUE,\
+	ret = oper_file(rtcp->history_file->str, "w+", FILE_HISTORY_VALUE,\
 					strlen(FILE_HISTORY_VALUE));
 	if (aWork_FILE_SUCCESS != ret) {
 		return eMSG_RTCP_FILE_WRITE_LIST_ERR;
@@ -311,7 +311,7 @@ static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gch
 	glib_log_debug("Create %s start.", rtcp->history_list_file->str);
 	GFile * list_file = g_file_new_for_path (rtcp->history_list_file->str);
 	if (FALSE == g_file_query_exists (list_file, NULL)) {
-		ret = open_file(rtcp->history_list_file->str, "w+", FILE_HISTORY_LIST_VALUE,\
+		ret = oper_file(rtcp->history_list_file->str, "w+", FILE_HISTORY_LIST_VALUE,\
 				strlen(FILE_HISTORY_LIST_VALUE));
 		if (aWork_FILE_SUCCESS != ret) {
 			g_object_unref(list_file);
@@ -319,13 +319,7 @@ static gint init_rtcp_file(RtcpToFile *rtcp, const gchar *result_path, const gch
 		}
 	}
 	g_object_unref(list_file);
-//	if (0 != access(rtcp->history_list_file->str, F_OK)) {
-//		ret = open_file(rtcp->history_list_file->str, "w+", FILE_HISTORY_LIST_VALUE,\
-//				strlen(FILE_HISTORY_LIST_VALUE));
-//		if (aWork_FILE_SUCCESS != ret) {
-//			return eMSG_RTCP_FILE_WRITE_LIST_ERR;
-//		}
-//	}
+
 	//增加历史列表
 	ret = add_rtcp_file_list(rtcp);
 	if (eMEDIA_SERVER_SUCCESS != ret) {
@@ -1195,25 +1189,39 @@ static void do_get (SoupServer *server, SoupMessage *msg, const char *path) {
   GStatBuf st;
 
   if (msg->method == SOUP_METHOD_GET) {
-    // SoupBuffer *buffer;
     SoupMessageHeadersIter iter;
     const char *name, *value;
 
-    /* mapping = g_mapped_file_new (path, FALSE, NULL);
-    if (!mapping) {
-      soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    } */
 
-    soup_message_headers_append (msg->response_headers,"Access-Control-Allow-Origin", "*");
 
-    /* buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
-				 g_mapped_file_get_length (mapping),
-				 mapping, (GDestroyNotify)g_mapped_file_unref);
+    gboolean str_equal= g_str_equal(path, CONFIG_GET_PATH);
+    glib_log_info("do get request:%s \n%s", path, CONFIG_GET_PATH);
+    /* 根据路径判断 */
+    if (TRUE == str_equal) {
+		GMappedFile *mapping;
+		SoupBuffer *buffer;
 
-    soup_message_body_append_buffer (msg->response_body, buffer); */
+		glib_log_info("%s add file", path);
+		mapping = g_mapped_file_new (CONFIG_FILE, FALSE, NULL);
+		if (!mapping) {
+			soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+			return;
+		}
 
-    // soup_buffer_free (buffer);
+		buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
+						     g_mapped_file_get_length (mapping),
+						     mapping, (GDestroyNotify)g_mapped_file_unref);
+		soup_message_body_append_buffer (msg->response_body, buffer);
+		soup_buffer_free (buffer);
+//    	char *value = NULL;
+//    	if (aWork_FILE_SUCCESS == read_file(CONFIG_FILE, &value)) {
+//    			soup_message_set_response (msg, "text/plain", SOUP_MEMORY_COPY,
+//    			                               value, strlen (value));
+//    			glib_log_info("%s add file", path);
+//    			g_free(value);
+//    	}
+
+    }
   } else /* msg->method == SOUP_METHOD_HEAD */ {
     char *length;
 
@@ -1235,11 +1243,18 @@ static void do_get (SoupServer *server, SoupMessage *msg, const char *path) {
  * Return:                                                                                   *
  *********************************************************************************************/
 static void do_post (SoupServer *server, SoupMessage *msg) {
-  if (msg->request_body->length) {
-    g_print ("%s\n", msg->request_body->data);
-    JsonObject *object = parse_json_object(msg->request_body->data);
-  }
-  soup_message_set_status(msg, SOUP_STATUS_OK);
+	gint nRet = eMEDIA_SERVER_SUCCESS;
+
+	if (msg->request_body->length) {
+		glib_log_info ("[%ld]%s\n", msg->request_body->length, msg->request_body->data);
+
+		/* 此处应该增加判断，首先判断字符串是JSON数据，然后保存 */
+		nRet = oper_file(CONFIG_FILE, "w+", msg->request_body->data, msg->request_body->length);
+		if (aWork_FILE_SUCCESS != nRet) {
+			glib_log_warning();
+		}
+	}
+	soup_message_set_status(msg, SOUP_STATUS_OK);
 }
 
 /*********************************************************************************************
@@ -1290,23 +1305,25 @@ static void http_callback (SoupServer *server, SoupMessage *msg,
   SoupMessageHeadersIter iter;
   const char *name, *value;
 
-  g_info ("%s %s HTTP/1.%d\n", msg->method, path, soup_message_get_http_version (msg));
+  glib_log_debug ("%s %s HTTP/1.%d\n", msg->method, path, soup_message_get_http_version (msg));
   soup_message_headers_iter_init (&iter, msg->request_headers);
 
-  while (soup_message_headers_iter_next (&iter, &name, &value))
-    g_info ("%s: %s\n", name, value);
+  while (soup_message_headers_iter_next (&iter, &name, &value)) {
+	  glib_log_debug ("%s: %s\n", name, value);
+  }
 
   file_path = g_strdup_printf (".%s", path);
-
-  if (msg->method == SOUP_METHOD_GET || msg->method == SOUP_METHOD_HEAD)
-    do_get (server, msg, file_path);
-  else if (msg->method == SOUP_METHOD_PUT)
-    do_put (server, msg, file_path);
-  else if (msg->method == SOUP_METHOD_POST)
-    do_post(server, msg);
-  else
-    soup_message_set_status (msg, SOUP_STATUS_NOT_IMPLEMENTED);
+  glib_log_info("Path:%s", path);
+  if (msg->method == SOUP_METHOD_GET || msg->method == SOUP_METHOD_HEAD) {
+	  do_get (server, msg, file_path);
+  } else if (msg->method == SOUP_METHOD_PUT) {
+	  do_put (server, msg, file_path);
+  } else if (msg->method == SOUP_METHOD_POST) {
+	  do_post(server, msg);
+  } else {
+	  soup_message_set_status (msg, SOUP_STATUS_NOT_IMPLEMENTED);
+  }
 
   g_free (file_path);
-  g_info ("  -> %d %s\n\n", msg->status_code, msg->reason_phrase);
+  glib_log_info ("  -> %d %s\n\n", msg->status_code, msg->reason_phrase);
 }
