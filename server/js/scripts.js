@@ -1,45 +1,10 @@
 var current_id = 0; // incremented id for tab2 
 
-var url = "ws://localhost:20000/"
+var url = "ws://localhost:20000/api/video/control"
 var webSocket;
 
-var tree = [
-  {
-    text: "推土机",
-    id:"3",
-    type : "主设备",
-    nodes: [
-      {
-        text   : "前视",
-        type   : "摄像机",
-        url    : "rtsp://122.112.211.178:18554",
-        user_id: "",
-        user_pw: ""
-      },
-      {
-        text   : "左视",
-        type   : "摄像机",
-        url    : "rtsp://122.112.211.178:18554",
-        user_id: "",
-        user_pw: ""
-      },
-      {
-        text   : "右视",
-        type   : "摄像机",
-        url    : "rtsp://122.112.211.178:18554",
-        user_id: "",
-        user_pw: ""
-      },
-      {
-        text   : "后视",
-        type   : "摄像机",
-        url    : "rtsp://122.112.211.178:18554",
-        user_id: "",
-        user_pw: ""
-      }
-    ]
-  }
-];  
+var saved_config = null;
+var tree = [];  
 
 var block_template = "<div class=\"col-md-4 column\" id=\"camera_00\" align=\"center\"> <p> \
 <h4 id=\"heading_00\"></h4> \
@@ -144,7 +109,7 @@ function openVideo(obj) {
     return;
   } 
 
-  var element = console.log($(obj).parent());
+  // var element = console.log($(obj).parent());
   var id = $(obj).parent().attr("id").split("_")[1];
 
   var data_content_dom =  $.parseHTML($("#config_" + id).attr("data-content"));
@@ -160,8 +125,8 @@ function openVideo(obj) {
     "url"     : url,
     "user_id" : user_id,
     "user_pw" : user_pw,
-    "latency" : 200,
-    "protocol": "UDP"
+    "latency" : saved_config['parameter']['rtsp']['latency'],
+    "protocol": saved_config['parameter']['rtsp']['proto']
   };
   console.log(jsonObj);
   webSocket.send(JSON.stringify(jsonObj));
@@ -283,38 +248,36 @@ $(function(){
       url: '/api/video/config',
       contentType: 'application/json',
       success: function(res) {
-        console.log(res);
-        alert(res);
+        saved_config = jQuery.parseJSON(res);
+        tree = saved_config['devices'];
       }
-    }); 
-
-    //渲染树
-    $('#left-tree').treeview({
-      data: getTree(),
-      levels: 1,
-      onNodeSelected:function(event, node){
-        if( node.type == "主设备") {
-          // To hide it
-          $("#editUrlDiv").addClass('hidden');
-          $("#editUsernameDiv").addClass('hidden');
-          $("#editPasswordDiv").addClass('hidden');
-          $("#editType").val(node.type);
-          $('#editName').val(node.text);
-        } 
-        else if( node.type == "摄像机") {
-          // To show it
-          $("#editUrlDiv").removeClass('hidden');
-          $("#editUsernameDiv").removeClass('hidden');
-          $("#editPasswordDiv").removeClass('hidden');
-
-          $('#editName').val(node.text);
-          $("#editType").val(node.type);
-          $('#editUrl').val(node.url);
-          $('#editUsername').val(node.user_id);
-          $('#editPassword').val(node.user_pw);
-        }
-      },
-      showCheckbox:false//是否显示多选
+    }).done(function () {
+        //渲染树
+        $('#left-tree').treeview({
+          data: getTree(),
+          levels: 1,
+          onNodeSelected:function(event, node){
+            if( node.type == "主设备") {
+              // To hide it
+              $("#editUrlDiv").addClass('hidden');
+              $("#editUsernameDiv").addClass('hidden');
+              $("#editPasswordDiv").addClass('hidden');
+              $("#editType").val(node.type);
+              $('#editName').val(node.text);
+            } else if( node.type == "摄像机") {
+              // To show it
+              $("#editUrlDiv").removeClass('hidden');
+              $("#editUsernameDiv").removeClass('hidden');
+              $("#editPasswordDiv").removeClass('hidden');
+              $('#editName').val(node.text);
+              $("#editType").val(node.type);
+              $('#editUrl').val(node.url);
+              $('#editUsername').val(node.user_id);
+              $('#editPassword').val(node.user_pw);
+            }
+          },
+          showCheckbox:false//是否显示多选
+        }); 
     }); 
   }
   

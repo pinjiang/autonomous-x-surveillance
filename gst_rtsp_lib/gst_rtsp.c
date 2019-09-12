@@ -34,8 +34,6 @@ RtcpParseInfo g_rtcp_parameter[RTCP_MAX_NUM] = {
 		{eSentRbJitter, 	 		"sent-rb-jitter",		eUint, 1000.0, TRUE},
 		{eSENT_RB_LSR,			    "sent-rb-lsr",			eUint, 1.0, FALSE},
 		{eSENT_RB_DLSR,			    "sent-rb-dlsr",			eUint, 1.0, FALSE}
-
-
 //		[eSSRC] 				= {eSSRC, 			"ssrc",			 		eUint, 1.0, FALSE},
 //		[eRECEIVED_BYE] 		= {eRECEIVED_BYE,	"received-bye",			eBollean, 1.0, FALSE},
 //		[eClockRate] 			= {eClockRate,	 	"clock-rate", 			eInt, 1.0, TRUE},

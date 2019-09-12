@@ -163,8 +163,8 @@ SoupServer* start_server(AppOption *opt, AppContext *app)
 	}
 
 	/* 3.增加WebSocket处理函数 */
-	soup_server_add_handler(server, NULL, http_callback, NULL, NULL);
-	soup_server_add_websocket_handler(server, NULL, NULL, NULL,
+	soup_server_add_handler(server, "/api/video/config", http_callback, NULL, NULL);
+	soup_server_add_websocket_handler(server, "/api/video/control", NULL, NULL,
 								   websocket_callback,
 								   app, NULL);
 	uris = soup_server_get_uris (server);
@@ -1192,8 +1192,6 @@ static void do_get (SoupServer *server, SoupMessage *msg, const char *path) {
     SoupMessageHeadersIter iter;
     const char *name, *value;
 
-
-
     gboolean str_equal= g_str_equal(path, CONFIG_GET_PATH);
     glib_log_info("do get request:%s \n%s", path, CONFIG_GET_PATH);
     /* 根据路径判断 */
@@ -1207,10 +1205,10 @@ static void do_get (SoupServer *server, SoupMessage *msg, const char *path) {
 			soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
 			return;
 		}
-
 		buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
 						     g_mapped_file_get_length (mapping),
 						     mapping, (GDestroyNotify)g_mapped_file_unref);
+		g_print(buffer);
 		soup_message_body_append_buffer (msg->response_body, buffer);
 		soup_buffer_free (buffer);
 //    	char *value = NULL;
@@ -1220,7 +1218,6 @@ static void do_get (SoupServer *server, SoupMessage *msg, const char *path) {
 //    			glib_log_info("%s add file", path);
 //    			g_free(value);
 //    	}
-
     }
   } else /* msg->method == SOUP_METHOD_HEAD */ {
     char *length;
@@ -1251,7 +1248,7 @@ static void do_post (SoupServer *server, SoupMessage *msg) {
 		/* 此处应该增加判断，首先判断字符串是JSON数据，然后保存 */
 		nRet = oper_file(CONFIG_FILE, "w+", msg->request_body->data, msg->request_body->length);
 		if (aWork_FILE_SUCCESS != nRet) {
-			glib_log_warning();
+			glib_log_warning(" not working ");
 		}
 	}
 	soup_message_set_status(msg, SOUP_STATUS_OK);
@@ -1308,9 +1305,9 @@ static void http_callback (SoupServer *server, SoupMessage *msg,
   glib_log_debug ("%s %s HTTP/1.%d\n", msg->method, path, soup_message_get_http_version (msg));
   soup_message_headers_iter_init (&iter, msg->request_headers);
 
-  while (soup_message_headers_iter_next (&iter, &name, &value)) {
+  /* while (soup_message_headers_iter_next (&iter, &name, &value)) {
 	  glib_log_debug ("%s: %s\n", name, value);
-  }
+  } */
 
   file_path = g_strdup_printf (".%s", path);
   glib_log_info("Path:%s", path);
