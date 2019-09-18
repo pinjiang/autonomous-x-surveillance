@@ -1,10 +1,10 @@
 var current_id = 0; // incremented id for tab2 
 
-var url = "ws://localhost:20000/api/video/control"
 var webSocket;
 
 var saved_config = null;
 var tree = [];  
+var paras = [];
 
 var block_template = "<div class=\"col-md-4 column\" id=\"camera_00\" align=\"center\"> <p> \
 <h4 id=\"heading_00\"></h4> \
@@ -61,25 +61,32 @@ function updateNode(obj, text, newnode) {
 }
                     
 function openSocket(){
+  var ws_server;
+
   // Ensures only one connection is open at a time
   if(webSocket !== undefined && webSocket.readyState !== WebSocket.CLOSED){
-    writeResponse("WebSocket is already opened.");
-    return;
+      writeResponse("WebSocket is already opened.");
+      return;
   }
+
+  if (window.location.protocol.startsWith ("file")) {
+    ws_server = ws_server || "127.0.0.1";
+  } else if (window.location.protocol.startsWith ("http")) {
+    ws_server = ws_server || window.location.host;
+  } else {
+    throw new Error ("Don't know how to connect to the signalling server with uri" + window.location);
+  }
+  var ws_url = 'ws://' + ws_server + '/api/video/control'
+
   // Create a new instance of the websocket
-  webSocket = new WebSocket(url);
+  webSocket = new WebSocket(ws_url);
                  
   /**
    * Binds functions to the listeners for the websocket.
    */
   webSocket.onopen = function(event){
-  // For reasons I can't determine, onopen gets called twice
-  // and the first time event.data is undefined.
-  // Leave a comment if you know the answer.
-  if(event.data === undefined)
-    return;
- 
-   writeResponse(event.data);
+    alert("视频流媒体客户端连接成功", "Alert Title");
+    writeResponse(event.data);  
   };
 
   webSocket.onerror = function(event) {
@@ -111,7 +118,6 @@ function openVideo(obj) {
 
   // var element = console.log($(obj).parent());
   var id = $(obj).parent().attr("id").split("_")[1];
-
   var data_content_dom =  $.parseHTML($("#config_" + id).attr("data-content"));
 
   var name = $("#name_" + id, data_content_dom).text();
@@ -125,8 +131,8 @@ function openVideo(obj) {
     "url"     : url,
     "user_id" : user_id,
     "user_pw" : user_pw,
-    "latency" : saved_config['parameter']['rtsp']['latency'],
-    "protocol": saved_config['parameter']['rtsp']['proto']
+    "latency" : paras['rtsp']['latency'],
+    "protocol": paras['rtsp']['proto']
   };
   console.log(jsonObj);
   webSocket.send(JSON.stringify(jsonObj));
@@ -250,11 +256,12 @@ $(function(){
       success: function(res) {
         saved_config = jQuery.parseJSON(res);
         tree = saved_config['devices'];
+        paras = saved_config['parameters'];
       }
     }).done(function () {
         //渲染树
         $('#left-tree').treeview({
-          data: getTree(),
+          data: tree,
           levels: 1,
           onNodeSelected:function(event, node){
             if( node.type == "主设备") {
@@ -339,11 +346,12 @@ $(function(){
       };
       updateNode(getTree(), node[0].text, newNode);
       $('#left-tree').treeview('updateNode', [ node, newNode]);
+      console.log({'devices': tree, 'parameters' : paras })
       $.ajax({
         type: 'POST',
         url: '/api/video/config',
         contentType: 'application/json',
-        data: JSON.stringify(tree), // access in body
+        data: JSON.stringify( {'devices': tree, 'parameters' : paras } ), // access in body
       }).done(function () {
         console.log('SUCCESS');
         $.showMsgText('保存成功');
@@ -398,8 +406,17 @@ $(function(){
     });
 
     //显示-添加
-    $("#Connect").click(function(){
+    /* $("#connect").click(function(){
       openSocket();
+    }); */
+
+    $('#connectModal').on('click', '.btn, .close', function() {
+      $(this).addClass('modal-result'); // mark which button was clicked
+    }).on('hidden.bs.modal', function() {
+      var result = $(this).find('.modal-result').filter('.btn-primary').length > 0; // attempt to filter by what you consider the "YES" button; if it was clicked, result should be true.
+      if( result == true ) {
+        openSocket();
+      }
     });
 
     /*-----页面pannel内容区高度自适应 start-----*/
